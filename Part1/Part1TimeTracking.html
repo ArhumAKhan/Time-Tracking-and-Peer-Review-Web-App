@@ -1,9 +1,25 @@
+<!--
+  Author: Nikhil Giridharan
+  NetID: nxg220038
+  Date: 9.19.2024
+  Class: CS 4485.0W1
+  Assignment: Time Tracking Web App (Part 1)
+
+  HTML file is a time entry web app for students to log their hours
+  worked on a project. User can input the date, time, and a description of the
+  work they have done, with a minimum character requirement for the description.
+  The form checks the description length and enables the submission button once
+  requirements are met. Time entries can be logged for today or previous
+  three days.
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Time Entry App</title>
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -45,18 +61,31 @@
 </head>
 <body>
 
+<!-- Container for the time entry form -->
 <div class="container">
   <h1>Time Entry</h1>
+
+  <!--
+    Time entry form for logging hours.
+    Inputs:
+    - Date: Allows user to select today or the past 3 days.
+    - Time: Hours logged in HH:MM format.
+    - Description: Explanation of the work, minimum of 30 characters.
+  -->
   <form id="timeEntryForm">
+    <!-- Date input field -->
     <label for="entryDate">Date:</label>
     <input type="date" id="entryDate" min="" max="" required>
 
+    <!-- Time input field -->
     <label for="entryTime">Time (HH:MM):</label>
     <input type="time" id="entryTime" required>
 
+    <!-- work description with a minimum length requirement -->
     <label for="entryDescription">Description of Work (Min 30 characters):</label>
     <textarea id="entryDescription" rows="4" required></textarea>
 
+    <!-- Submit button disabled until valid description -->
     <button type="submit" id="submitButton" class="submit-btn" disabled>Submit</button>
   </form>
 </div>
@@ -67,27 +96,27 @@
     const descriptionInput = document.getElementById('entryDescription');
     const submitButton = document.getElementById('submitButton');
 
-    // Set max date to today and min date to 3 days before today
+    // max date to today's date and min date to three days before today
     const today = new Date();
     const maxDate = today.toISOString().split('T')[0];
     const minDate = new Date(today.setDate(today.getDate() - 3)).toISOString().split('T')[0];
 
-    dateInput.setAttribute('max', maxDate);
-    dateInput.setAttribute('min', minDate);
+    dateInput.setAttribute('max', maxDate); // Max date set to today
+    dateInput.setAttribute('min', minDate); // Min date set to 3 days before today
 
-    // Enable the submit button only if the description is 30 characters or more
+    // Enables the submit button when the description is 30 characters or more
     descriptionInput.addEventListener('input', () => {
       if (descriptionInput.value.length >= 30) {
-        submitButton.disabled = false;
+        submitButton.disabled = false; // Enable button if description is valid
       } else {
-        submitButton.disabled = true;
+        submitButton.disabled = true; // Disable button if description is too short
       }
     });
 
-    // Form submit event handler (without saving the data)
+    // Form submission handler that prevents default submission and shows an alert
     document.getElementById('timeEntryForm').addEventListener('submit', (event) => {
-      event.preventDefault();  // Prevent form submission
-      alert('Time entry submitted!');
+      event.preventDefault();  
+      alert('Time entry submitted!');  
     });
   });
 </script>
