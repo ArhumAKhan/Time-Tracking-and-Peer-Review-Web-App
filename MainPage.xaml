@@ -1,0 +1,65 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="TimeTrackApp.MainPage"
+             Title="Time Track Reporting">
+
+    <!-- Main Page Layout -->
+    <VerticalStackLayout Padding="20" Spacing="10">
+
+        <!-- Professor's Class Selection -->
+        <Label Text="Select a Class:" FontSize="Medium" />
+        <Picker x:Name="classPicker" 
+                Title="Choose Class"
+                ItemsSource="{Binding ProfessorClasses}"
+                SelectedItem="{Binding SelectedClass}" />
+
+        <!-- Students Time Tracking Overview -->
+        <Label Text="Time Tracking Overview" FontSize="Large" Margin="0,20,0,0"/>
+
+        <!-- Grid to Display Students and Hours -->
+        <CollectionView x:Name="studentHoursGrid" 
+                        ItemsSource="{Binding StudentsHours}">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Grid>
+                        <!-- Grid with Student Names and Time Logs -->
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="3*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Student Name -->
+                        <Label Grid.Column="0" 
+                               Text="{Binding StudentName}" 
+                               FontSize="Medium" />
+
+                        <!-- Time logged per day -->
+                        <Label Grid.Column="1" 
+                               Text="{Binding Day1Hours}" 
+                               FontSize="Medium" />
+                        <Label Grid.Column="2" 
+                               Text="{Binding Day2Hours}" 
+                               FontSize="Medium" />
+                        <Label Grid.Column="3" 
+                               Text="{Binding TotalHours}" 
+                               FontSize="Medium" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <!-- Total Time for Week -->
+        <Label Text="Total Time Logged for Week:" FontSize="Medium" Margin="0,20,0,0" />
+        <Label x:Name="totalHoursLabel" Text="{Binding TotalWeekHours}" FontSize="Medium" />
+
+        <!-- Modify Time Entry Button -->
+        <Button Text="Modify Time Entry" Command="{Binding ModifyTimeCommand}" />
+
+        <!-- Email Students Button -->
+        <Button Text="Email Students" Command="{Binding EmailStudentsCommand}" />
+
+    </VerticalStackLayout>
+</ContentPage>
