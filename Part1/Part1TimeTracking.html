@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Time Entry App</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+    }
+    h1 {
+      text-align: center;
+    }
+    label {
+      font-weight: bold;
+    }
+    input[type="time"], textarea {
+      width: 100%;
+      margin: 5px 0 15px 0;
+      padding: 10px;
+    }
+    input[type="date"] {
+      width: 100%;
+      margin: 5px 0 15px 0;
+      padding: 10px;
+    }
+    .submit-btn {
+      width: 100%;
+      padding: 15px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    .submit-btn:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Time Entry</h1>
+  <form id="timeEntryForm">
+    <label for="entryDate">Date:</label>
+    <input type="date" id="entryDate" min="" max="" required>
+
+    <label for="entryTime">Time (HH:MM):</label>
+    <input type="time" id="entryTime" required>
+
+    <label for="entryDescription">Description of Work (Min 30 characters):</label>
+    <textarea id="entryDescription" rows="4" required></textarea>
+
+    <button type="submit" id="submitButton" class="submit-btn" disabled>Submit</button>
+  </form>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const dateInput = document.getElementById('entryDate');
+    const descriptionInput = document.getElementById('entryDescription');
+    const submitButton = document.getElementById('submitButton');
+
+    // Set max date to today and min date to 3 days before today
+    const today = new Date();
+    const maxDate = today.toISOString().split('T')[0];
+    const minDate = new Date(today.setDate(today.getDate() - 3)).toISOString().split('T')[0];
+
+    dateInput.setAttribute('max', maxDate);
+    dateInput.setAttribute('min', minDate);
+
+    // Enable the submit button only if the description is 30 characters or more
+    descriptionInput.addEventListener('input', () => {
+      if (descriptionInput.value.length >= 30) {
+        submitButton.disabled = false;
+      } else {
+        submitButton.disabled = true;
+      }
+    });
+
+    // Form submit event handler (without saving the data)
+    document.getElementById('timeEntryForm').addEventListener('submit', (event) => {
+      event.preventDefault();  // Prevent form submission
+      alert('Time entry submitted!');
+    });
+  });
+</script>
+
+</body>
+</html>
