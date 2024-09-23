@@ -2,6 +2,7 @@
 
 ## Instructor: Prof. John Cole
 
+### Team 73: Nikhil Giridharan, Farhat Raiyan Kabir, Arhum Khan, Jaden Nguyen, Tahoor Khalid, Johnny An
 ---
 
 ### Part 1 
