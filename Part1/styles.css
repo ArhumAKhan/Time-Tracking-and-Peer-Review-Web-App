@@ -1,0 +1,49 @@
+  /* Author: Nikhil Giridharan */
+  /* NetID: nxg220038 */
+  /* Date: 9.19.2024 */
+  /* Class: CS 4485.0W1 */
+  /* Assignment: Time Tracking Web App (Part 1) */
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+}
+
+.container {
+    max-width: 600px;
+    margin: auto;
+}
+
+h1 {
+    text-align: center;
+}
+
+label {
+    font-weight: bold;
+}
+
+input[type="time"], textarea {
+    width: 100%;
+    margin: 5px 0 15px 0;
+    padding: 10px;
+}
+
+input[type="date"] {
+    width: 100%;
+    margin: 5px 0 15px 0;
+    padding: 10px;
+}
+
+.submit-btn {
+    width: 100%;
+    padding: 15px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.submit-btn:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
