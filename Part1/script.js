@@ -1,3 +1,9 @@
+// Author: Nikhil Giridharan
+// NetID: nxg220038
+// Date: 9.19.2024
+// Class: CS 4485.0W1
+// Assignment: Time Tracking Web App (Part 1)
+
 document.addEventListener('DOMContentLoaded', () => {
     const dateInput = document.getElementById('entryDate');
     const descriptionInput = document.getElementById('entryDescription');
