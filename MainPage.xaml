@@ -1,4 +1,4 @@
-﻿<!-- 
+<!-- 
   Author: Nikhil Giridharan
   NetID: nxg220038
   Date: 9.22.2024
@@ -26,8 +26,8 @@
         <Label Text="Select a Class:" FontSize="Medium" />
         <Picker x:Name="classPicker" 
                 Title="Choose Class"
-                ItemsSource="{Binding ProfessorClasses}"  <!-- Binding to list of classes -->
-                SelectedItem="{Binding SelectedClass}" />  <!-- Binding to selected class -->
+                ItemsSource="{Binding ProfessorClasses}" /> <!-- Binding to list of classes -->
+        <Picker SelectedItem="{Binding SelectedClass}" /> <!-- Binding to selected class -->
 
         <!-- 
           This section will display the logged hours for each student in the selected class.
@@ -59,22 +59,22 @@
 
                         <!-- Display the student’s name in the first column -->
                         <Label Grid.Column="0" 
-                               Text="{Binding StudentName}"  <!-- Bound to student name -->
+                               Text="{Binding StudentName}" <!-- Bound to student name -->
                                FontSize="Medium" />
 
                         <!-- Display hours logged for Day 1 in the second column -->
                         <Label Grid.Column="1" 
-                               Text="{Binding Day1Hours}"  <!-- Bound to hours for Day 1 -->
+                               Text="{Binding Day1Hours}" <!-- Bound to hours for Day 1 -->
                                FontSize="Medium" />
 
                         <!-- Display hours logged for Day 2 in the third column -->
                         <Label Grid.Column="2" 
-                               Text="{Binding Day2Hours}"  <!-- Bound to hours for Day 2 -->
+                               Text="{Binding Day2Hours}" <!-- Bound to hours for Day 2 -->
                                FontSize="Medium" />
 
                         <!-- Display total hours logged in the fourth column -->
                         <Label Grid.Column="3" 
-                               Text="{Binding TotalHours}"  <!-- Bound to total hours -->
+                               Text="{Binding TotalHours}" <!-- Bound to total hours -->
                                FontSize="Medium" />
                     </Grid>
                 </DataTemplate>
