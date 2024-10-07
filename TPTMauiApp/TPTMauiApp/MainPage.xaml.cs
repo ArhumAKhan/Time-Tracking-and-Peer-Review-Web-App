@@ -7,25 +7,28 @@
  
   C# file defines the code for the MainPage of the time tracking app.
   Initializes the XAML components and does data binding between the view and the ViewModel.
-  MainPage uses the MainPageViewModel to handle displaying the list of students, time logs, 
+  MainPage uses the MainPageViewModel to handle displaying the list of students, time logs,
   modifying time entries and emailing students.
 */
 
 using System.Text.RegularExpressions;
+using TPTMauiApp.Data;
 
-namespace TPTMauiApp
+namespace TPTMauiApp;
+
+// MainPage class inherits from ContentPage and is main UI screen for time tracking reporting.
+public partial class MainPage : ContentPage
 {
-    // MainPage class inherits from ContentPage and is main UI screen for time tracking reporting.
-    public partial class MainPage : ContentPage
-    {
-        // Constructor for the MainPage class
-        public MainPage()
-        {
-            // Sets up the UI components that were declared in the XAML file 
-            InitializeComponent();
+    private readonly ApplicationDbContext _dbContext;
 
-            // The ViewModel is for handles business logic and provides data to the UI.
-            BindingContext = new MainPageViewModel();
-        }
+    // Constructor for the MainPage class
+    public MainPage(ApplicationDbContext dbContext)
+    {
+        // Sets up the UI components that were declared in the XAML file
+        InitializeComponent();
+        _dbContext = dbContext;
+
+        // The ViewModel is for handles business logic and provides data to the UI.
+        BindingContext = new MainPageViewModel();
     }
 }
