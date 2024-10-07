@@ -18,7 +18,11 @@ public static class MauiProgram
                 fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
             });
 
-        var connectionString = "";
+        var connectionString =
+            "Server=localhost;Database=mywebsite;User=root;Password=password123;";
+
+        builder.Services.AddTransient<MainPage>();
+        builder.Services.AddTransient<LoginPage>();
 
         builder.Services.AddDbContext<ApplicationDbContext>(options =>
             options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
