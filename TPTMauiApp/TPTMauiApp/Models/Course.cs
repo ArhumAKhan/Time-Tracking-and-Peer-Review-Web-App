@@ -15,4 +15,5 @@ public class Course
 
     public int ProfessorId { get; set; } // Maps to professor_id
     public Professor Professor { get; set; }
+    public ICollection<TimeLog> TimeLogs { get; set; }
 }
