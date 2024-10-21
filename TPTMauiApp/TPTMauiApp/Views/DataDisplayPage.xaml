@@ -1,0 +1,76 @@
+<!--
+/*
+ * Author: Johnny An
+ * NetID: HXA210014
+ * Date: 10.06.24
+ * Class: CS4485.0W1
+ * Assignment: Time Tracking Desktop App (Part 2)
+ * */    
+    -->
+    
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="TPTMauiApp.Views.DataDisplayPage">
+
+    <ScrollView>
+        <StackLayout Padding="20">
+            <!-- Professors Section -->
+            <Label Text="Professors" FontSize="Medium" Padding="10" />
+            <CollectionView ItemsSource="{Binding Professors}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <StackLayout Padding="5">
+                            <Label Text="{Binding FirstName}" FontSize="Small"/>
+                            <Label Text="{Binding LastName}" FontSize="Small"/>
+                            <Label Text="{Binding Email}" FontSize="Small"/>
+                        </StackLayout>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <!-- Courses Section -->
+            <Label Text="Courses" FontSize="Medium" Padding="10" />
+            <CollectionView ItemsSource="{Binding Courses}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <StackLayout Padding="5">
+                            <Label Text="{Binding CourseName}" FontSize="Small"/>
+                            <!-- Ensure the Professor navigation is correctly bound -->
+                            <Label Text="Professor: {Binding Professor.FirstName} {Binding Professor.LastName}" FontSize="Small"/>
+                        </StackLayout>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <!-- Students Section -->
+            <Label Text="Students" FontSize="Medium" Padding="10" />
+            <CollectionView ItemsSource="{Binding Students}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <StackLayout Padding="5">
+                            <Label Text="{Binding FirstName}" FontSize="Small"/>
+                            <Label Text="{Binding LastName}" FontSize="Small"/>
+                            <Label Text="{Binding Email}" FontSize="Small"/>
+                        </StackLayout>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <!-- Time Logs Section -->
+            <Label Text="Time Logs" FontSize="Medium" Padding="10" />
+            <CollectionView ItemsSource="{Binding TimeLogs}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <StackLayout Padding="5">
+                            <Label Text="Date: {Binding LogDate}" FontSize="Small"/>
+                            <Label Text="Hours: {Binding HoursLogged}" FontSize="Small"/>
+                            <Label Text="Student: {Binding Student.FirstName} {Binding Student.LastName}" FontSize="Small"/>
+                            <Label Text="Course: {Binding Course.CourseName}" FontSize="Small"/>
+                        </StackLayout>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </StackLayout>
+    </ScrollView>
+</ContentPage>

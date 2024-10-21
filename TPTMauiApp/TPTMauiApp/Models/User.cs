@@ -6,12 +6,24 @@
  * Assignment: Time Tracking Desktop App (Part 2)
  * */
 
-namespace TPTMauiApp.Models;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-public class User
+namespace TPTMauiApp.Models
 {
-    public int UserId { get; set; }
-    public string NetID { get; set; }
-    public string Password { get; set; }
-    public string Role { get; set; }
+    public class User
+    {
+        [Key]
+        [Column("user_id")]
+        public int UserId { get; set; }
+
+        [Column("netID")]
+        public string NetID { get; set; }
+
+        [Column("password")]
+        public string Password { get; set; }
+
+        [Column("role")]
+        public string Role { get; set; }  // Enum: 'student', 'professor', 'admin'
+    }
 }

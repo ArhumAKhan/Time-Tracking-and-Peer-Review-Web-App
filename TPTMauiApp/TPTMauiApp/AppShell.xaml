@@ -3,13 +3,15 @@
     x:Class="TPTMauiApp.AppShell"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:views="clr-namespace:TPTMauiApp.Views"
     xmlns:local="clr-namespace:TPTMauiApp"
     Shell.FlyoutBehavior="Disabled"
     Title="TPTMauiApp">
 
+    <!-- Set DataDisplayPage as the default route -->
     <ShellContent
-        Title="Home"
-        ContentTemplate="{DataTemplate local:LoginPage}"
-        Route="LoginPage" />
+        Title="Data Display"
+        ContentTemplate="{DataTemplate views:DataDisplayPage}"
+        Route="DataDisplayPage" />
 
 </Shell>

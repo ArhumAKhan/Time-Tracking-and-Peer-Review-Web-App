@@ -6,14 +6,31 @@
  * Assignment: Time Tracking Desktop App (Part 2)
  * */
 
-namespace TPTMauiApp.Models;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Collections.Generic;
 
-public class Student
+namespace TPTMauiApp.Models
 {
-    public int StudentId { get; set; }
-    public string FirstName { get; set; }
-    public string LastName { get; set; }
-    public string Email { get; set; }
-    public string Major { get; set; }
-    public List<TimeLog> TimeLogs { get; set; }
+    public class Student
+    {
+        [Key]
+        [Column("student_id")]
+        public int StudentId { get; set; }
+
+        [Column("first_name")]
+        public string FirstName { get; set; }
+
+        [Column("last_name")]
+        public string LastName { get; set; }
+
+        [Column("email")]
+        public string Email { get; set; }
+
+        [Column("major")]
+        public string Major { get; set; }
+
+        // Navigation property
+        public ICollection<TimeLog> TimeLogs { get; set; }
+    }
 }

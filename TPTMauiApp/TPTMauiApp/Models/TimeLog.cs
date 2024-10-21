@@ -6,16 +6,34 @@
  * Assignment: Time Tracking Desktop App (Part 2)
  * */
 
-namespace TPTMauiApp.Models;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-public class TimeLog
+namespace TPTMauiApp.Models
 {
-    public int LogId { get; set; } // Primary key
-    public int StudentId { get; set; }
-    public int CourseId { get; set; }
-    public DateTime LogDate { get; set; }
-    public decimal HoursLogged { get; set; }
+    [Table("time_logs")]
+    public class TimeLog
+    {
+        [Key]
+        [Column("log_id")]
+        public int LogId { get; set; }
 
-    public Student Student { get; set; }
-    public Course Course { get; set; }
+        [ForeignKey("Student")]
+        [Column("student_id")]
+        public int StudentId { get; set; }
+
+        [ForeignKey("Course")]
+        [Column("course_id")]
+        public int CourseId { get; set; }
+
+        [Column("log_date")]
+        public DateTime LogDate { get; set; }
+
+        [Column("hours_logged")]
+        public decimal HoursLogged { get; set; }
+
+        // Navigation properties
+        public Student Student { get; set; }
+        public Course Course { get; set; }
+    }
 }

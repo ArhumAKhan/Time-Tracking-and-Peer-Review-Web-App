@@ -6,16 +6,31 @@
  * Assignment: Time Tracking Desktop App (Part 2)
  * */
 
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Collections.Generic;
 
-// Models/Professor.cs
-namespace TPTMauiApp.Models;
-
-public class Professor
+namespace TPTMauiApp.Models
 {
-    public int ProfessorId { get; set; }  // Maps to professor_id
-    public string FirstName { get; set; } // Maps to first_name
-    public string LastName { get; set; }  // Maps to last_name
-    public string Email { get; set; }     // Maps to email
-    public string Department { get; set; } // Maps to department
-    public List<Course> Courses { get; set; }
+    public class Professor
+    {
+        [Key]
+        [Column("professor_id")]
+        public int ProfessorId { get; set; }
+
+        [Column("first_name")]
+        public string FirstName { get; set; }
+
+        [Column("last_name")]
+        public string LastName { get; set; }
+
+        [Column("email")]
+        public string Email { get; set; }
+
+        [Column("department")]
+        public string Department { get; set; }
+
+        // Navigation property
+        public ICollection<Course> Courses { get; set; }
+    }
 }

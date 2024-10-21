@@ -6,21 +6,14 @@
  * Assignment: Time Tracking Desktop App (Part 2)
  * */
 
-using TPTMauiApp.Data;
-using TPTMauiApp.Views;
-
 namespace TPTMauiApp;
 
 public partial class App : Application
 {
-    private readonly ApplicationDbContext _dbContext;
-
-    public App(ApplicationDbContext dbContext)
+    public App()
     {
         InitializeComponent();
-        _dbContext = dbContext;
 
-        // Set HoursLoggedView as the initial page for testing
-        MainPage = new NavigationPage(new HoursLoggedView(_dbContext));
+        MainPage = new AppShell();
     }
 }
