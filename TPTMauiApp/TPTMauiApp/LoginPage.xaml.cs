@@ -35,6 +35,7 @@ namespace TPTMauiApp
 
         private async void Authenticate(string netID, string password)
         {
+            // update this connection string with your MySQL server details
             string connectionString = "server=localhost;user=root;database=team73_db;port=3306;password=team73";
 
             try
