@@ -49,7 +49,7 @@ namespace TPTMauiApp
                     {
                         cmd.Parameters.AddWithValue("@netID", netID);
                         cmd.Parameters.AddWithValue("@password", password);
-                        cmd.Parameters.AddWithValue("@userType", 'S');
+                        cmd.Parameters.AddWithValue("@userType", 'P');
 
                         var result = Convert.ToInt32(await cmd.ExecuteScalarAsync());
 
