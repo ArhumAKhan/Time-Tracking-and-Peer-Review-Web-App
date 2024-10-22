@@ -32,7 +32,7 @@ namespace PeerReviewApp
                 GetTeam("jxd123456");
                 GetCriteria("2024-10-21");
 
-                BindGrid(teamMembers.Select(tm => $"{tm.FirstName} {tm.LastName}").ToList());
+                BuildTable();
             }
         }
 
@@ -59,16 +59,15 @@ namespace PeerReviewApp
                     {
                         while (reader.Read())
                         {
-                            string firstName = reader["first_name"].ToString();
-                            string lastName = reader["last_name"].ToString();
+                            string name = reader["last_name"].ToString() + ", " + reader["first_name"].ToString();
                             string netId = reader["net_id"].ToString();
 
-                            teamMembers.Add(new TeamMembers { FirstName = firstName, LastName = lastName, NetId = netId });
+                            teamMembers.Add(new TeamMembers { Name = name, NetId = netId });
                         }
 
-                        string teamMembersJson = new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(teamMembers);
-                        string script = $"<script>console.log({teamMembersJson});</script>";
-                        ClientScript.RegisterStartupScript(this.GetType(), "PrintTeamMembers", script);
+                        //string teamMembersJson = new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(teamMembers);
+                        //string script = $"<script>console.log({teamMembersJson});</script>";
+                        //ClientScript.RegisterStartupScript(this.GetType(), "PrintTeamMembers", script);
 
                         connection.Close();
                     }
@@ -101,80 +100,72 @@ namespace PeerReviewApp
                             criteria.Add(new Criteria { CriteriaId = criteriaId, CriteriaDesc = criteriaDesc });
                         }
 
-                        string criteriaJson = new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(criteria);
-                        string script = $"<script>console.log({criteriaJson});</script>";
-                        ClientScript.RegisterStartupScript(this.GetType(), "PrintCriteria", script);
+                        //string criteriaJson = new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(criteria);
+                        //string script = $"<script>console.log({criteriaJson});</script>";
+                        //ClientScript.RegisterStartupScript(this.GetType(), "PrintCriteria", script);
 
                         connection.Close();
                     }
                 }
             }
         }
-        private void BindGrid(List<string> studentNames)
-        {
 
-            PeerReviewGrid.DataSource = studentNames.Select(name => new { StudentName = name }).ToList();
-            PeerReviewGrid.DataBind();
+        private void BuildTable()
+        {
+            Table table = new Table();
+            TableRow headerRow = new TableRow();
+
+            TableHeaderCell headerCell = new TableHeaderCell();
+            headerCell.Text = "Member Name";
+            headerRow.Cells.Add(headerCell);
+
+            foreach (Criteria c in criteria)
+            {
+                headerCell = new TableHeaderCell();
+                headerCell.Text = c.CriteriaDesc;
+                headerRow.Cells.Add(headerCell);
+            }
+
+            table.Rows.Add(headerRow);
+
+            foreach (TeamMembers tm in teamMembers)
+            {
+                TableRow row = new TableRow();
+                TableCell cell = new TableCell();
+                cell.Text = tm.Name;
+                row.Cells.Add(cell);
+
+                foreach (Criteria c in criteria)
+                {
+                    cell = new TableCell();
+                    cell.ID = tm.NetId + "_" + c.CriteriaId;
+                    cell.CssClass = "rating";
+
+                    DropDownList ddl = new DropDownList();
+                    ddl.Items.Add(new ListItem("0", "0"));
+                    ddl.Items.Add(new ListItem("1", "1"));
+                    ddl.Items.Add(new ListItem("2", "2"));
+                    ddl.Items.Add(new ListItem("3", "3"));
+                    ddl.Items.Add(new ListItem("4", "4"));
+                    ddl.Items.Add(new ListItem("5", "5"));
+
+                    cell.Controls.Add(ddl);
+                    row.Cells.Add(cell);
+                }
+
+                table.Rows.Add(row);
+            }
+
+            ReviewTable.Controls.Add(table);
         }
 
         protected void SubmitButton_Click(object sender, EventArgs e)
         {
-            var students = new List<Student>();
-
-            foreach (GridViewRow row in PeerReviewGrid.Rows)
-            {
-                var studentName = row.Cells[0].Text;
-                var studentId = GetStudentIdByName(studentName);
-
-                var ratings = new List<Rating>
-                {
-                    new Rating { CriteriaId = "Criteria1", Value = int.Parse(((DropDownList)row.FindControl("Criteria1")).SelectedValue) },
-                    new Rating { CriteriaId = "Criteria2", Value = int.Parse(((DropDownList)row.FindControl("Criteria2")).SelectedValue) },
-                    new Rating { CriteriaId = "Criteria3", Value = int.Parse(((DropDownList)row.FindControl("Criteria3")).SelectedValue) },
-                    new Rating { CriteriaId = "Criteria4", Value = int.Parse(((DropDownList)row.FindControl("Criteria4")).SelectedValue) },
-                    new Rating { CriteriaId = "Criteria5", Value = int.Parse(((DropDownList)row.FindControl("Criteria5")).SelectedValue) }
-                };
-
-                students.Add(new Student { Id = studentId, Ratings = ratings, StudentName = studentName });
-            }
-
-            var json = JsonConvert.SerializeObject(students, Formatting.Indented);
-            string script = $"console.log({JsonConvert.SerializeObject(json)});";
-            ClientScript.RegisterStartupScript(this.GetType(), "showjson", script, true);
-        }
-
-        private int GetStudentIdByName(string studentName)
-        {
-            var students = new List<Student>
-            {
-                new Student { Id = 1, StudentName = "Farhat" },
-                new Student { Id = 2, StudentName = "Nikhil" },
-                new Student { Id = 3, StudentName = "Jhonny" },
-                new Student { Id = 4, StudentName = "Jaden" },
-                new Student { Id = 5, StudentName = "Tahoor" },
-                new Student { Id = 6, StudentName = "Arhum" }
-            };
-
-            return students.FirstOrDefault(s => s.StudentName == studentName)?.Id ?? 0;
-        }
-
-        public class Student
-        {
-            public int Id { get; set; }
-            public string StudentName { get; set; }
-            public List<Rating> Ratings { get; set; }
-        }
-
-        public class Rating
-        {
-            public string CriteriaId { get; set; }
-            public int Value { get; set; }
         }
 
         public class TeamMembers
         {
-            public string FirstName { get; set; }
-            public string LastName { get; set; }
+            public string Name { get; set; }
             public string NetId { get; set; }
         }
 
