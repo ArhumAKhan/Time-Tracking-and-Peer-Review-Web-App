@@ -8,33 +8,108 @@ using System.Web.UI;
 using System.Web.UI.WebControls;
 using Microsoft.Ajax.Utilities;
 using Newtonsoft.Json;
+using MySql.Data.MySqlClient;
 using static PeerReviewApp.PeerReviewEntry;
 
 namespace PeerReviewApp
 {
     public partial class PeerReviewEntry : System.Web.UI.Page
     {
+        private List<TeamMembers> teamMembers;
+        private List<Criteria> criteria;
+
+        private readonly string connectionString = "server=localhost;user=root;database=team73_db;port=3306;password=team73";
+
         protected void Page_Load(object sender, EventArgs e)
         {
 
             if (!IsPostBack)
             {
-                //Replace with SQL query for team
-                var students = new List<Student>
-                {
-                    new Student { Id = 1, StudentName = "Farhat" },
-                    new Student { Id = 2, StudentName = "Nikhil" },
-                    new Student { Id = 3, StudentName = "Jhonny" },
-                    new Student { Id = 4, StudentName = "Jaden" },
-                    new Student { Id = 5, StudentName = "Tahoor" },
-                    new Student { Id = 6, StudentName = "Arhum" }
-                };
+                teamMembers = new List<TeamMembers>();
+                criteria = new List<Criteria>();
 
-                var studentNames = students.Select(s => s.StudentName).ToList();
-                BindGrid(studentNames);
+                // These are placeholders. Replace with actual values from session or page constructor.
+                GetTeam("jxd123456");
+                GetCriteria("2024-10-21");
+
+                BindGrid(teamMembers.Select(tm => $"{tm.FirstName} {tm.LastName}").ToList());
             }
         }
 
+        private void GetTeam(string user_net_ID)
+        {
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            {
+                connection.Open();
+
+                string query = "SELECT u.first_name, u.last_name, u.net_id " +
+                                "FROM users u " +
+                                "JOIN team_members tm ON u.net_id = tm.member_net_id " +
+                                "WHERE tm.team_number = (" +
+                                "SELECT team_number " +
+                                "FROM team_members " +
+                                "WHERE member_net_id = @user_net_ID" +
+                                ")";
+
+                using (MySqlCommand command = new MySqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@user_net_ID", user_net_ID);
+
+                    using (MySqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            string firstName = reader["first_name"].ToString();
+                            string lastName = reader["last_name"].ToString();
+                            string netId = reader["net_id"].ToString();
+
+                            teamMembers.Add(new TeamMembers { FirstName = firstName, LastName = lastName, NetId = netId });
+                        }
+
+                        string teamMembersJson = new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(teamMembers);
+                        string script = $"<script>console.log({teamMembersJson});</script>";
+                        ClientScript.RegisterStartupScript(this.GetType(), "PrintTeamMembers", script);
+
+                        connection.Close();
+                    }
+                }
+            }
+        }
+
+        private void GetCriteria(string review_date)
+        {
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            {
+                connection.Open();
+
+                string query = "SELECT criteria_id, criteria_desc " +
+                                "FROM peer_review_criteria " +
+                                "WHERE course_id = @course_id AND review_date = @review_date";
+
+                using (MySqlCommand command = new MySqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@course_id", "CS4485");
+                    command.Parameters.AddWithValue("@review_date", review_date);
+
+                    using (MySqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            int criteriaId = int.Parse(reader["criteria_id"].ToString());
+                            string criteriaDesc = reader["criteria_desc"].ToString();
+
+                            criteria.Add(new Criteria { CriteriaId = criteriaId, CriteriaDesc = criteriaDesc });
+                        }
+
+                        string criteriaJson = new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(criteria);
+                        string script = $"<script>console.log({criteriaJson});</script>";
+                        ClientScript.RegisterStartupScript(this.GetType(), "PrintCriteria", script);
+
+                        connection.Close();
+                    }
+                }
+            }
+        }
         private void BindGrid(List<string> studentNames)
         {
 
@@ -94,6 +169,19 @@ namespace PeerReviewApp
         {
             public string CriteriaId { get; set; }
             public int Value { get; set; }
+        }
+
+        public class TeamMembers
+        {
+            public string FirstName { get; set; }
+            public string LastName { get; set; }
+            public string NetId { get; set; }
+        }
+
+        public class Criteria
+        {
+            public int CriteriaId { get; set; }
+            public string CriteriaDesc { get; set; }
         }
     }
 }
