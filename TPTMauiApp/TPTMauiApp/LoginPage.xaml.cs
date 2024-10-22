@@ -62,6 +62,8 @@ namespace TPTMauiApp
                         {
                             await DisplayAlert("Error", "Invalid NetID or Password.", "OK");
                         }
+
+                        conn.Close();
                     }
                 }
             }
