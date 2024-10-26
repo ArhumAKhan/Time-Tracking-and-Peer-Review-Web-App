@@ -49,6 +49,7 @@ namespace PeerReviewApp
             BuildButton(criteria, teamMembers);
         }
 
+        // Function to get the peer review criteria for the current date
         private List<Criteria> GetCriteria(string review_date)
         {
             using (MySqlConnection connection = new MySqlConnection(connectionString))
@@ -87,6 +88,7 @@ namespace PeerReviewApp
             }
         }
 
+        // Function to get the user's team members using their net ID
         private List<TeamMembers> GetTeam(string user_net_ID)
         {
             using (MySqlConnection connection = new MySqlConnection(connectionString))
@@ -129,20 +131,26 @@ namespace PeerReviewApp
             }
         }
 
+        // Function to build the table for the peer review form
         private void BuildTable(List<Criteria> criteria, List<TeamMembers> teamMembers)
         {
+            // Initialize the table
             Table table = new Table
             {
                 ID = "ReviewTable"
             };
+
+            // Create the header row for the table
             TableRow headerRow = new TableRow();
 
+            // Add label for member name column
             TableHeaderCell headerCell = new TableHeaderCell
             {
                 Text = "Member Name"
             };
             headerRow.Cells.Add(headerCell);
 
+            // Insert the criteria as headers for rest of the columns
             foreach (Criteria c in criteria)
             {
                 headerCell = new TableHeaderCell
@@ -152,10 +160,13 @@ namespace PeerReviewApp
                 headerRow.Cells.Add(headerCell);
             }
 
+            // Add the header row to the table
             table.Rows.Add(headerRow);
 
+            // Add a row for each team member
             foreach (TeamMembers tm in teamMembers)
             {
+                // Label first cell with the team member's name
                 TableRow row = new TableRow();
                 TableCell cell = new TableCell
                 {
@@ -163,6 +174,7 @@ namespace PeerReviewApp
                 };
                 row.Cells.Add(cell);
 
+                // Add a dropdown list for rating member on each criteria
                 foreach (Criteria c in criteria)
                 {
                     DropDownList ddl = new DropDownList();
@@ -178,12 +190,15 @@ namespace PeerReviewApp
                     row.Cells.Add(cell);
                 }
 
+                // Add the row to the table
                 table.Rows.Add(row);
             }
 
+            // Add the table to the placeholder
             ReviewTablePlaceholder.Controls.Add(table);
         }
 
+        // Function to enable the submit button for the peer review form and add functionality
         private void BuildButton(List<Criteria> criteria, List<TeamMembers> teamMembers)
         {
             Button submitButton = FindControl("SubmitButton") as Button;
@@ -191,23 +206,35 @@ namespace PeerReviewApp
             submitButton.Click += (s, args) => SubmitButton_Click(criteria, teamMembers);
         }
 
+        // Submission button functionality to insert the peer review ratings into the database
         protected void SubmitButton_Click(List<Criteria> criteria, List<TeamMembers> teamMembers)
         {
+            // Get the table
             Table reviewTable = ReviewTablePlaceholder.FindControl("ReviewTable") as Table;
+
+            // Create a list to store the ratings
             var ratingData = new List<Rating>();
 
+            // For each member (row) in the table
             for (int i = 1; i < reviewTable.Rows.Count; i++)
             {
                 TableRow row = reviewTable.Rows[i];
+
+                // Get the net ID of the corresponding member
                 string for_id = teamMembers[i - 1].NetId;
 
+                // For each criteria (column) in the table
                 for (int j = 1; j < row.Cells.Count; j++)
                 {
                     TableCell cell = row.Cells[j];
+
+                    // Get the criteria ID
                     int criteria_id = criteria[j - 1].CriteriaId;
 
+                    // Get the dropdown list
                     DropDownList ddl = cell.Controls.OfType<DropDownList>().FirstOrDefault();
 
+                    // Compile the rating data
                     Rating rating = new Rating
                     {
                         Criteria_id = criteria_id,
@@ -215,23 +242,29 @@ namespace PeerReviewApp
                         From_net_id = Session["net_id"].ToString(),
                         RatingValue = int.Parse(ddl.SelectedValue)
                     };
+
+                    // Add the rating to the list
                     ratingData.Add(rating);
                 }
             }
 
+            // If there are ratings to insert, insert them into the database
             if (ratingData.Count > 0)
             {
                 using (MySqlConnection connection = new MySqlConnection(connectionString))
                 {
                     connection.Open();
 
+                    // For each rating
                     foreach (Rating rating in ratingData)
                     {
+                        // Insert the rating into DB
                         string query = "INSERT INTO peer_review_ratings (course_id, criteria_id, for_net_id, from_net_id, rating) " +
                                        "VALUES (@course_id, @criteria_id, @for_net_id, @from_net_id, @rating)";
 
                         using (MySqlCommand command = new MySqlCommand(query, connection))
                         {
+                            // Set the parameters for the query
                             command.Parameters.AddWithValue("@course_id", "CS4485.JC");
                             command.Parameters.AddWithValue("@criteria_id", rating.Criteria_id);
                             command.Parameters.AddWithValue("@for_net_id", rating.For_net_id);
@@ -244,21 +277,39 @@ namespace PeerReviewApp
 
                     connection.Close();
                 }
+
+                /* ADD
+                 * LOGIC
+                 * TO
+                 * PRVENT
+                 * MULTIPLE
+                 * SUBMISSIONS
+                 * HERE
+                 */
+            } else
+            {
+                // If there are no ratings to insert, display an error message
+                string script = "alert('Error: Failed to submit peer review.');";
+                ClientScript.RegisterStartupScript(this.GetType(), "alert", script, true);
+                return;
             }
         }
 
+        // Class for storing team member data
         public class TeamMembers
         {
             public string Name { get; set; }
             public string NetId { get; set; }
         }
 
+        // Class for storing criteria data
         public class Criteria
         {
             public int CriteriaId { get; set; }
             public string CriteriaDesc { get; set; }
         }
 
+        // Class for storing rating data
         public class Rating
         {
             public int Criteria_id { get; set; }
