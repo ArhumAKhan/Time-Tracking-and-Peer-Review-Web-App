@@ -20,14 +20,17 @@ namespace PeerReviewApp
 
         protected void Page_Load(object sender, EventArgs e)
         {
+            // Validate that the user is logged in
             if (Session["utd_id"] == null || Session["net_id"] == null)
             {
                 Response.Redirect("Login.aspx");
             }
 
+            // Get the current date and find any peer review criteria for that date
             string currentDate = DateTime.Now.ToString("yyyy-MM-dd");
             List<Criteria> criteria = GetCriteria(currentDate);
 
+            // If there are no criteria for the current date, peer review submission is not allowed
             if (criteria.Count < 1)
             {
                 string script = "alert('Error: No peer review submission for today.');";
@@ -35,14 +38,15 @@ namespace PeerReviewApp
                 return;
             }
 
-            string user_net_ID = Session["net_id"]?.ToString();
+            // Get the user's team using their net ID
+            string user_net_ID = Session["net_id"].ToString();
             List<TeamMembers> teamMembers = GetTeam(user_net_ID);
 
+            // Build the table for the peer review form using the criteria and team members
             BuildTable(criteria, teamMembers);
 
-            Button submitButton = FindControl("SubmitButton") as Button;
-            submitButton.Visible = true;
-            submitButton.Click += (s, args) => SubmitButton_Click(criteria, teamMembers);
+            // Open the submit button and add functionality using the criteria and team members
+            BuildButton(criteria, teamMembers);
         }
 
         private List<Criteria> GetCriteria(string review_date)
@@ -51,12 +55,14 @@ namespace PeerReviewApp
             {
                 connection.Open();
 
+                // Query DB to get the criteria for the current date
                 string query = "SELECT criteria_id, criteria_desc " +
                                 "FROM peer_review_criteria " +
                                 "WHERE course_id = @course_id AND review_date = @review_date";
 
                 using (MySqlCommand command = new MySqlCommand(query, connection))
                 {
+                    // Set the parameters for the query
                     command.Parameters.AddWithValue("@course_id", "CS4485.JC");
                     command.Parameters.AddWithValue("@review_date", review_date);
 
@@ -64,6 +70,7 @@ namespace PeerReviewApp
                     {
                         List<Criteria> criteria = new List<Criteria>();
 
+                        // Compile all found criteria into a list
                         while (reader.Read())
                         {
                             int criteriaId = int.Parse(reader["criteria_id"].ToString());
@@ -72,6 +79,7 @@ namespace PeerReviewApp
                             criteria.Add(new Criteria { CriteriaId = criteriaId, CriteriaDesc = criteriaDesc });
                         }
 
+                        // Close DB connection and return the list of criteria
                         connection.Close();
                         return criteria;
                     }
@@ -85,6 +93,7 @@ namespace PeerReviewApp
             {
                 connection.Open();
 
+                // Query DB to get the user's team members
                 string query = "SELECT u.first_name, u.last_name, u.net_id " +
                                 "FROM users u " +
                                 "JOIN team_members tm ON u.net_id = tm.member_net_id " +
@@ -96,12 +105,14 @@ namespace PeerReviewApp
 
                 using (MySqlCommand command = new MySqlCommand(query, connection))
                 {
+                    // Set the parameter for the query
                     command.Parameters.AddWithValue("@user_net_ID", user_net_ID);
 
                     using (MySqlDataReader reader = command.ExecuteReader())
                     {
                         List<TeamMembers> teamMembers = new List<TeamMembers>();
 
+                        // Compile all found team members into a list
                         while (reader.Read())
                         {
                             string name = reader["last_name"].ToString() + ", " + reader["first_name"].ToString();
@@ -110,6 +121,7 @@ namespace PeerReviewApp
                             teamMembers.Add(new TeamMembers { Name = name, NetId = netId });
                         }
 
+                        // Close DB connection and return the list of team members
                         connection.Close();
                         return teamMembers;
                     }
@@ -170,6 +182,13 @@ namespace PeerReviewApp
             }
 
             ReviewTablePlaceholder.Controls.Add(table);
+        }
+
+        private void BuildButton(List<Criteria> criteria, List<TeamMembers> teamMembers)
+        {
+            Button submitButton = FindControl("SubmitButton") as Button;
+            submitButton.Visible = true;
+            submitButton.Click += (s, args) => SubmitButton_Click(criteria, teamMembers);
         }
 
         protected void SubmitButton_Click(List<Criteria> criteria, List<TeamMembers> teamMembers)
