@@ -133,7 +133,6 @@ namespace PeerReviewApp
             {
                 headerCell = new TableHeaderCell
                 {
-                    ID = c.CriteriaId.ToString(),
                     Text = c.CriteriaDesc
                 };
                 headerRow.Cells.Add(headerCell);
@@ -146,7 +145,6 @@ namespace PeerReviewApp
                 TableRow row = new TableRow();
                 TableCell cell = new TableCell
                 {
-                    ID = tm.NetId,
                     Text = tm.Name
                 };
                 row.Cells.Add(cell);
@@ -175,27 +173,26 @@ namespace PeerReviewApp
         protected void SubmitButton_Click(object sender, EventArgs e)
         {
             Table reviewTable = ReviewTablePlaceholder.FindControl("ReviewTable") as Table;
-
             var ratingData = new List<Rating>();
 
             for (int i = 1; i < reviewTable.Rows.Count; i++)
             {
                 TableRow row = reviewTable.Rows[i];
-                string for_id = row.Cells[0].ID;
+                string for_id = teamMembers[i - 1].NetId;
 
                 for (int j = 1; j < row.Cells.Count; j++)
                 {
                     TableCell cell = row.Cells[j];
-                    string criteria_id = reviewTable.Rows[0].Cells[j].ID;
+                    int criteria_id = criteria[j - 1].CriteriaId;
 
                     DropDownList ddl = cell.Controls.OfType<DropDownList>().FirstOrDefault();
 
                     Rating rating = new Rating
                     {
-                        criteria_id = int.Parse(criteria_id),
-                        for_net_id = for_id,
-                        from_net_id = Session["net_id"].ToString(),
-                        rating = int.Parse(ddl.SelectedValue)
+                        Criteria_id = criteria_id,
+                        For_net_id = for_id,
+                        From_net_id = Session["net_id"].ToString(),
+                        RatingValue = int.Parse(ddl.SelectedValue)
                     };
                     ratingData.Add(rating);
                 }
@@ -215,10 +212,10 @@ namespace PeerReviewApp
                         using (MySqlCommand command = new MySqlCommand(query, connection))
                         {
                             command.Parameters.AddWithValue("@course_id", "CS4485.JC");
-                            command.Parameters.AddWithValue("@criteria_id", rating.criteria_id);
-                            command.Parameters.AddWithValue("@for_net_id", rating.for_net_id);
-                            command.Parameters.AddWithValue("@from_net_id", rating.from_net_id);
-                            command.Parameters.AddWithValue("@rating", rating.rating);
+                            command.Parameters.AddWithValue("@criteria_id", rating.Criteria_id);
+                            command.Parameters.AddWithValue("@for_net_id", rating.For_net_id);
+                            command.Parameters.AddWithValue("@from_net_id", rating.From_net_id);
+                            command.Parameters.AddWithValue("@rating", rating.RatingValue);
 
                             command.ExecuteNonQuery();
                         }
@@ -243,10 +240,10 @@ namespace PeerReviewApp
 
         public class Rating
         {
-            public int criteria_id { get; set; }
-            public string for_net_id { get; set; }
-            public string from_net_id { get; set; }
-            public int rating { get; set; }
+            public int Criteria_id { get; set; }
+            public string For_net_id { get; set; }
+            public string From_net_id { get; set; }
+            public int RatingValue { get; set; }
         }
     }
 }
