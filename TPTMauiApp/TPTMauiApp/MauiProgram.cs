@@ -1,6 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
 using TPTMauiApp.Data;
 using TPTMauiApp.ViewModels;
 using TPTMauiApp.Views;
@@ -21,14 +20,13 @@ public static class MauiProgram
             });
 
         var connectionString =
-            "Server=localhost;Database=maui;User=root;Password=root;";
+            "Server=localhost;Database=mywebsite;User=root;Password=password123;";
 
         builder.Services.AddTransient<MainPage>();
         builder.Services.AddTransient<LoginPage>();
         builder.Services.AddTransient<DataDisplayPage>();
         builder.Services.AddSingleton<ApplicationDbContext>();
         builder.Services.AddTransient<DataDisplayViewModel>();
-
 
         builder.Services.AddDbContext<ApplicationDbContext>(options =>
             options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
