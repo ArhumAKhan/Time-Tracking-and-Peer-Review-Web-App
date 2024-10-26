@@ -25,3 +25,8 @@ Desktop.ini
 $RECYCLE.BIN/
 
 AppPackages/
+packages/
+
+# test stuff Farhat is using
+test/
+PeerReviewApp/
