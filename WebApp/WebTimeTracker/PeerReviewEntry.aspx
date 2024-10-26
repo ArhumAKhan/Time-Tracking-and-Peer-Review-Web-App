@@ -71,7 +71,7 @@
         <div class="container">
             <h1>Peer Review Entry</h1>
             <asp:PlaceHolder ID="ReviewTablePlaceholder" runat="server"></asp:PlaceHolder>
-            <asp:Button ID="SubmitButton" runat="server" Text="Submit" CssClass="submit-btn" OnClick="SubmitButton_Click" Visible="false" />
+            <asp:Button ID="SubmitButton" runat="server" Text="Submit" CssClass="submit-btn" Visible="false" />
         </div>
     </form>
 </body>
