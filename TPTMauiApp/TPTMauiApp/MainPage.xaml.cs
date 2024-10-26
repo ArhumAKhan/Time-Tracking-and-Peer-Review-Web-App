@@ -19,7 +19,7 @@ namespace TPTMauiApp
     public partial class MainPage : ContentPage
     {
         // Constructor for the MainPage class
-        public MainPage()
+        public MainPage(string utdID, string netID)
         {
             // Sets up the UI components that were declared in the XAML file 
             InitializeComponent();
