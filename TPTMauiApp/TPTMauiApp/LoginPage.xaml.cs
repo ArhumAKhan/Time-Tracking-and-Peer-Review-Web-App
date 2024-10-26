@@ -52,11 +52,11 @@ namespace TPTMauiApp
                         cmd.Parameters.AddWithValue("@password", password);
                         cmd.Parameters.AddWithValue("@userType", 'P');
 
-                        var result = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                        var utdID = Convert.ToInt32(await cmd.ExecuteScalarAsync());
 
-                        if (result > 0)
+                        if (utdID > 0)
                         {
-                            await Navigation.PushAsync(new MainPage());
+                            await Navigation.PushAsync(new MainPage(utdID.ToString(), netID));
                         }
                         else
                         {
