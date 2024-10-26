@@ -16,9 +16,6 @@ namespace PeerReviewApp
 {
     public partial class PeerReviewEntry : System.Web.UI.Page
     {
-        private List<TeamMembers> teamMembers;
-        private List<Criteria> criteria;
-
         private readonly string connectionString = ConfigurationManager.ConnectionStrings["MySqlConnectionString"].ConnectionString;
 
         protected void Page_Load(object sender, EventArgs e)
@@ -28,9 +25,8 @@ namespace PeerReviewApp
                 Response.Redirect("Login.aspx");
             }
 
-            criteria = new List<Criteria>();
             string currentDate = DateTime.Now.ToString("yyyy-MM-dd");
-            GetCriteria(currentDate);
+            List<Criteria> criteria = GetCriteria(currentDate);
 
             if (criteria.Count < 1)
             {
@@ -39,17 +35,51 @@ namespace PeerReviewApp
                 return;
             }
 
-            teamMembers = new List<TeamMembers>();
             string user_net_ID = Session["net_id"]?.ToString();
-            GetTeam(user_net_ID);
+            List<TeamMembers> teamMembers = GetTeam(user_net_ID);
 
-            BuildTable();
+            BuildTable(criteria, teamMembers);
 
             Button submitButton = FindControl("SubmitButton") as Button;
             submitButton.Visible = true;
+            submitButton.Click += (s, args) => SubmitButton_Click(criteria, teamMembers);
         }
 
-        private void GetTeam(string user_net_ID)
+        private List<Criteria> GetCriteria(string review_date)
+        {
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            {
+                connection.Open();
+
+                string query = "SELECT criteria_id, criteria_desc " +
+                                "FROM peer_review_criteria " +
+                                "WHERE course_id = @course_id AND review_date = @review_date";
+
+                using (MySqlCommand command = new MySqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@course_id", "CS4485.JC");
+                    command.Parameters.AddWithValue("@review_date", review_date);
+
+                    using (MySqlDataReader reader = command.ExecuteReader())
+                    {
+                        List<Criteria> criteria = new List<Criteria>();
+
+                        while (reader.Read())
+                        {
+                            int criteriaId = int.Parse(reader["criteria_id"].ToString());
+                            string criteriaDesc = reader["criteria_desc"].ToString();
+
+                            criteria.Add(new Criteria { CriteriaId = criteriaId, CriteriaDesc = criteriaDesc });
+                        }
+
+                        connection.Close();
+                        return criteria;
+                    }
+                }
+            }
+        }
+
+        private List<TeamMembers> GetTeam(string user_net_ID)
         {
             using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
@@ -70,6 +100,8 @@ namespace PeerReviewApp
 
                     using (MySqlDataReader reader = command.ExecuteReader())
                     {
+                        List<TeamMembers> teamMembers = new List<TeamMembers>();
+
                         while (reader.Read())
                         {
                             string name = reader["last_name"].ToString() + ", " + reader["first_name"].ToString();
@@ -79,43 +111,13 @@ namespace PeerReviewApp
                         }
 
                         connection.Close();
+                        return teamMembers;
                     }
                 }
             }
         }
 
-        private void GetCriteria(string review_date)
-        {
-            using (MySqlConnection connection = new MySqlConnection(connectionString))
-            {
-                connection.Open();
-
-                string query = "SELECT criteria_id, criteria_desc " +
-                                "FROM peer_review_criteria " +
-                                "WHERE course_id = @course_id AND review_date = @review_date";
-
-                using (MySqlCommand command = new MySqlCommand(query, connection))
-                {
-                    command.Parameters.AddWithValue("@course_id", "CS4485.JC");
-                    command.Parameters.AddWithValue("@review_date", review_date);
-
-                    using (MySqlDataReader reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            int criteriaId = int.Parse(reader["criteria_id"].ToString());
-                            string criteriaDesc = reader["criteria_desc"].ToString();
-
-                            criteria.Add(new Criteria { CriteriaId = criteriaId, CriteriaDesc = criteriaDesc });
-                        }
-
-                        connection.Close();
-                    }
-                }
-            }
-        }
-
-        private void BuildTable()
+        private void BuildTable(List<Criteria> criteria, List<TeamMembers> teamMembers)
         {
             Table table = new Table
             {
@@ -170,7 +172,7 @@ namespace PeerReviewApp
             ReviewTablePlaceholder.Controls.Add(table);
         }
 
-        protected void SubmitButton_Click(object sender, EventArgs e)
+        protected void SubmitButton_Click(List<Criteria> criteria, List<TeamMembers> teamMembers)
         {
             Table reviewTable = ReviewTablePlaceholder.FindControl("ReviewTable") as Table;
             var ratingData = new List<Rating>();
