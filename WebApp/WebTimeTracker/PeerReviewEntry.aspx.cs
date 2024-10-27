@@ -23,7 +23,15 @@ namespace PeerReviewApp
             // Validate that the user is logged in
             if (Session["utd_id"] == null || Session["net_id"] == null)
             {
-                Response.Redirect("Login.aspx");
+               Response.Redirect("Login.aspx");
+            }
+
+            // Check if the user has already made a peer review submission
+            if (UserHasSubmitted())
+            {
+                string script = "alert('Error: You have already submitted a peer review for today.');";
+                ClientScript.RegisterStartupScript(this.GetType(), "alert", script, true);
+                return;
             }
 
             // Get the current date and find any peer review criteria for that date
@@ -47,6 +55,39 @@ namespace PeerReviewApp
 
             // Open the submit button and add functionality using the criteria and team members
             BuildButton(criteria, teamMembers);
+        }
+
+        // Function to check if the user has already made a peer review submission
+        private bool UserHasSubmitted()
+        {
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            {
+                connection.Open();
+
+                // Query DB to check if a peer review submission from the user already exists
+                string query = "SELECT * FROM pr_submissions " +
+                "WHERE submitter_net_id = @submitter_net_id AND submission_date = @submission_date";
+
+                MySqlCommand command = new MySqlCommand(query, connection);
+
+                // Set the parameters for the query
+                command.Parameters.AddWithValue("@submitter_net_id", Session["net_id"].ToString());
+                command.Parameters.AddWithValue("@submission_date", DateTime.Now.ToString("yyyy-MM-dd"));
+
+                // Execute the query and check if a submission exists
+                int count = Convert.ToInt32(command.ExecuteScalar());
+
+                // Close DB connection
+                connection.Close();
+
+                // Return true if a submission exists, false otherwise
+                if (count > 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         // Function to get the peer review criteria for the current date
@@ -260,7 +301,7 @@ namespace PeerReviewApp
                     {
                         // Insert the rating into DB
                         string query = "INSERT INTO peer_review_ratings (course_id, criteria_id, for_net_id, from_net_id, rating) " +
-                                       "VALUES (@course_id, @criteria_id, @for_net_id, @from_net_id, @rating)";
+                                        "VALUES (@course_id, @criteria_id, @for_net_id, @from_net_id, @rating)";
 
                         using (MySqlCommand command = new MySqlCommand(query, connection))
                         {
@@ -275,17 +316,20 @@ namespace PeerReviewApp
                         }
                     }
 
+                    string insertion = "INSERT INTO pr_submissions (submission_date, submitter_net_id)" +
+                                        "VALUES (@submission_date, @submitter_net_id)";
+
+                    using (MySqlCommand command = new MySqlCommand(insertion, connection))
+                    {
+                        // Set the parameters for the query
+                        command.Parameters.AddWithValue("@submission_date", DateTime.Now.ToString("yyyy-MM-dd"));
+                        command.Parameters.AddWithValue("@submitter_net_id", Session["net_id"].ToString());
+
+                        command.ExecuteNonQuery();
+                    }
+
                     connection.Close();
                 }
-
-                /* ADD
-                 * LOGIC
-                 * TO
-                 * PRVENT
-                 * MULTIPLE
-                 * SUBMISSIONS
-                 * HERE
-                 */
             } else
             {
                 // If there are no ratings to insert, display an error message
