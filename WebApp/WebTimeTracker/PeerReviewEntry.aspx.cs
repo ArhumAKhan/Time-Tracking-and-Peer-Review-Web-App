@@ -53,8 +53,8 @@ namespace PeerReviewApp
             // Build the table for the peer review form using the criteria and team members
             BuildTable(criteria, teamMembers);
 
-            // Open the submit button and add functionality using the criteria and team members
-            BuildButton(criteria, teamMembers);
+            // Enable the submit button and its functionality
+            EnableButton(criteria, teamMembers);
         }
 
         // Function to check if the user has already made a peer review submission
@@ -240,7 +240,7 @@ namespace PeerReviewApp
         }
 
         // Function to enable the submit button for the peer review form and add functionality
-        private void BuildButton(List<Criteria> criteria, List<TeamMembers> teamMembers)
+        private void EnableButton(List<Criteria> criteria, List<TeamMembers> teamMembers)
         {
             Button submitButton = FindControl("SubmitButton") as Button;
             submitButton.Visible = true;
