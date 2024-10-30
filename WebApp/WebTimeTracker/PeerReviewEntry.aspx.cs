@@ -23,11 +23,27 @@ namespace PeerReviewApp
             // Validate that the user is logged in
             if (Session["utd_id"] == null || Session["net_id"] == null)
             {
-               Response.Redirect("Login.aspx");
+                Response.Redirect("Login.aspx");
             }
 
-            // Check if the user has already made a peer review submission
-            if (UserHasSubmitted())
+            // Get the current date
+            string currentDate = DateTime.Now.ToString("yyyy-MM-dd");
+
+            // Check to see if there are any peer reviews for the current date
+            int pr_id = FindPeerReview(currentDate);
+
+            // If there are no peer reviews for the current date, peer review submission is not allowed
+            if (pr_id == -1)
+            {
+                string script = "alert('Error: No peer review submission for today.');";
+                ClientScript.RegisterStartupScript(this.GetType(), "alert", script, true);
+                return;
+            }
+
+            string user_net_ID = Session["net_id"].ToString();
+
+            // Check if the user has already made a submission for this peer review
+            if (HasAlreadySubmitted(user_net_ID, pr_id))
             {
                 string script = "alert('Error: You have already submitted a peer review for today.');";
                 ClientScript.RegisterStartupScript(this.GetType(), "alert", script, true);
@@ -35,30 +51,51 @@ namespace PeerReviewApp
             }
 
             // Get the current date and find any peer review criteria for that date
-            string currentDate = DateTime.Now.ToString("yyyy-MM-dd");
-            List<Criteria> criteria = GetCriteria(currentDate);
-
-            // If there are no criteria for the current date, peer review submission is not allowed
-            if (criteria.Count < 1)
-            {
-                string script = "alert('Error: No peer review submission for today.');";
-                ClientScript.RegisterStartupScript(this.GetType(), "alert", script, true);
-                return;
-            }
+            List<Criteria> criteria = GetCriteria(pr_id);
 
             // Get the user's team using their net ID
-            string user_net_ID = Session["net_id"].ToString();
             List<TeamMembers> teamMembers = GetTeam(user_net_ID);
 
             // Build the table for the peer review form using the criteria and team members
             BuildTable(criteria, teamMembers);
 
             // Enable the submit button and its functionality
-            EnableButton(criteria, teamMembers);
+            EnableButton(criteria, teamMembers, user_net_ID, pr_id);
         }
 
-        // Function to check if the user has already made a peer review submission
-        private bool UserHasSubmitted()
+        // Function to find the peer review for the current date
+        private int FindPeerReview(string currentDate)
+        {
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            {
+                connection.Open();
+
+                // Query DB to find the peer review accepting submissions for the current date
+                string pr_query = "SELECT pr_id " +
+                                  "FROM peer_review " +
+                                  "WHERE @review_date BETWEEN start_date AND end_date";
+
+                MySqlCommand pr_command = new MySqlCommand(pr_query, connection);
+
+                // Set the parameter for the query
+                pr_command.Parameters.AddWithValue("@review_date", currentDate);
+
+                // Execute the query and get the peer review ID
+                object result = pr_command.ExecuteScalar();
+
+                // Save the peer review ID if it exists
+                int pr_id = result != null ? Convert.ToInt32(result) : -1;
+
+                // Close DB connection
+                connection.Close();
+
+                // Return the peer review ID
+                return pr_id;
+            }
+        }
+
+        // Function to check if the user has already made a submission for the current peer review
+        private bool HasAlreadySubmitted(string user_net_ID, int pr_id)
         {
             using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
@@ -66,49 +103,44 @@ namespace PeerReviewApp
 
                 // Query DB to check if a peer review submission from the user already exists
                 string query = "SELECT * FROM pr_submissions " +
-                "WHERE submitter_net_id = @submitter_net_id AND submission_date = @submission_date";
+                               "WHERE submitter_net_id = @submitter_net_id AND pr_id = @pr_id";
 
-                MySqlCommand command = new MySqlCommand(query, connection);
+
+                MySqlCommand pr_submission_command = new MySqlCommand(query, connection);
 
                 // Set the parameters for the query
-                command.Parameters.AddWithValue("@submitter_net_id", Session["net_id"].ToString());
-                command.Parameters.AddWithValue("@submission_date", DateTime.Now.ToString("yyyy-MM-dd"));
+                pr_submission_command.Parameters.AddWithValue("@submitter_net_id", user_net_ID);
+                pr_submission_command.Parameters.AddWithValue("@pr_id", pr_id);
 
                 // Execute the query and check if a submission exists
-                int count = Convert.ToInt32(command.ExecuteScalar());
+                int count = Convert.ToInt32(pr_submission_command.ExecuteScalar());
 
                 // Close DB connection
                 connection.Close();
 
                 // Return true if a submission exists, false otherwise
-                if (count > 0)
-                {
-                    return true;
-                }
+                return count > 0;
             }
-
-            return false;
         }
 
         // Function to get the peer review criteria for the current date
-        private List<Criteria> GetCriteria(string review_date)
+        private List<Criteria> GetCriteria(int pr_id)
         {
             using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
                 connection.Open();
 
                 // Query DB to get the criteria for the current date
-                string query = "SELECT criteria_id, criteria_desc " +
-                                "FROM peer_review_criteria " +
-                                "WHERE course_id = @course_id AND review_date = @review_date";
+                string criteria_query = "SELECT criteria_id, criteria_desc " +
+                                        "FROM pr_criteria " +
+                                        "WHERE pr_id = @pr_id";
 
-                using (MySqlCommand command = new MySqlCommand(query, connection))
+                using (MySqlCommand criteria_command = new MySqlCommand(criteria_query, connection))
                 {
                     // Set the parameters for the query
-                    command.Parameters.AddWithValue("@course_id", "CS4485.JC");
-                    command.Parameters.AddWithValue("@review_date", review_date);
+                    criteria_command.Parameters.AddWithValue("@pr_id", pr_id);
 
-                    using (MySqlDataReader reader = command.ExecuteReader())
+                    using (MySqlDataReader reader = criteria_command.ExecuteReader())
                     {
                         List<Criteria> criteria = new List<Criteria>();
 
@@ -240,15 +272,15 @@ namespace PeerReviewApp
         }
 
         // Function to enable the submit button for the peer review form and add functionality
-        private void EnableButton(List<Criteria> criteria, List<TeamMembers> teamMembers)
+        private void EnableButton(List<Criteria> criteria, List<TeamMembers> teamMembers, string user_net_id, int pr_id)
         {
             Button submitButton = FindControl("SubmitButton") as Button;
             submitButton.Visible = true;
-            submitButton.Click += (s, args) => SubmitButton_Click(criteria, teamMembers);
+            submitButton.Click += (s, args) => SubmitButton_Click(criteria, teamMembers, user_net_id, pr_id);
         }
 
         // Submission button functionality to insert the peer review ratings into the database
-        protected void SubmitButton_Click(List<Criteria> criteria, List<TeamMembers> teamMembers)
+        protected void SubmitButton_Click(List<Criteria> criteria, List<TeamMembers> teamMembers, string user_net_id, int pr_id)
         {
             // Get the table
             Table reviewTable = ReviewTablePlaceholder.FindControl("ReviewTable") as Table;
@@ -280,7 +312,7 @@ namespace PeerReviewApp
                     {
                         Criteria_id = criteria_id,
                         For_net_id = for_id,
-                        From_net_id = Session["net_id"].ToString(),
+                        From_net_id = user_net_id,
                         RatingValue = int.Parse(ddl.SelectedValue)
                     };
 
@@ -296,17 +328,34 @@ namespace PeerReviewApp
                 {
                     connection.Open();
 
+
+                    // Register the submission in the pr_submissions table
+                    string pr_submission_insert = "INSERT INTO pr_submissions (pr_id, submission_date, submitter_net_id) " +
+                                                  "VALUES (@pr_id, @submission_date, @submitter_net_id)";
+
+                    MySqlCommand pr_submission_command = new MySqlCommand(pr_submission_insert, connection);
+
+                    pr_submission_command.Parameters.AddWithValue("@pr_id", pr_id);
+                    pr_submission_command.Parameters.AddWithValue("@submission_date", DateTime.Now.ToString("yyyy-MM-dd"));
+                    pr_submission_command.Parameters.AddWithValue("@submitter_net_id", user_net_id);
+
+                    pr_submission_command.ExecuteNonQuery();
+
+                    int submission_id = (int)pr_submission_command.LastInsertedId;
+                    System.Diagnostics.Debug.WriteLine("Last Inserted ID: " + submission_id);
+
                     // For each rating
                     foreach (Rating rating in ratingData)
                     {
-                        // Insert the rating into DB
-                        string query = "INSERT INTO peer_review_ratings (course_id, criteria_id, for_net_id, from_net_id, rating) " +
-                                        "VALUES (@course_id, @criteria_id, @for_net_id, @from_net_id, @rating)";
+                        // Insert the rating into DB while linking it to the submission
+                        string query = "INSERT INTO pr_ratings (submission_id, pr_id, criteria_id, from_net_id, for_net_id, rating) " +
+                                       "VALUES (@submission_id, @pr_id, @criteria_id, @for_net_id, @from_net_id, @rating)";
 
                         using (MySqlCommand command = new MySqlCommand(query, connection))
                         {
                             // Set the parameters for the query
-                            command.Parameters.AddWithValue("@course_id", "CS4485.JC");
+                            command.Parameters.AddWithValue("@submission_id", submission_id);
+                            command.Parameters.AddWithValue("@pr_id", pr_id);
                             command.Parameters.AddWithValue("@criteria_id", rating.Criteria_id);
                             command.Parameters.AddWithValue("@for_net_id", rating.For_net_id);
                             command.Parameters.AddWithValue("@from_net_id", rating.From_net_id);
@@ -316,21 +365,10 @@ namespace PeerReviewApp
                         }
                     }
 
-                    string insertion = "INSERT INTO pr_submissions (submission_date, submitter_net_id)" +
-                                        "VALUES (@submission_date, @submitter_net_id)";
-
-                    using (MySqlCommand command = new MySqlCommand(insertion, connection))
-                    {
-                        // Set the parameters for the query
-                        command.Parameters.AddWithValue("@submission_date", DateTime.Now.ToString("yyyy-MM-dd"));
-                        command.Parameters.AddWithValue("@submitter_net_id", Session["net_id"].ToString());
-
-                        command.ExecuteNonQuery();
-                    }
-
                     connection.Close();
                 }
-            } else
+            }
+            else
             {
                 // If there are no ratings to insert, display an error message
                 string script = "alert('Error: Failed to submit peer review.');";
