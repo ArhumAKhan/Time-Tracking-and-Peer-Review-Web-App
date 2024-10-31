@@ -349,7 +349,7 @@ namespace PeerReviewApp
                     {
                         // Insert the rating into DB while linking it to the submission
                         string query = "INSERT INTO pr_ratings (submission_id, pr_id, criteria_id, from_net_id, for_net_id, rating) " +
-                                       "VALUES (@submission_id, @pr_id, @criteria_id, @for_net_id, @from_net_id, @rating)";
+                                       "VALUES (@submission_id, @pr_id, @criteria_id, @from_net_id, @for_net_id, @rating)";
 
                         using (MySqlCommand command = new MySqlCommand(query, connection))
                         {
@@ -357,8 +357,8 @@ namespace PeerReviewApp
                             command.Parameters.AddWithValue("@submission_id", submission_id);
                             command.Parameters.AddWithValue("@pr_id", pr_id);
                             command.Parameters.AddWithValue("@criteria_id", rating.Criteria_id);
-                            command.Parameters.AddWithValue("@for_net_id", rating.For_net_id);
                             command.Parameters.AddWithValue("@from_net_id", rating.From_net_id);
+                            command.Parameters.AddWithValue("@for_net_id", rating.For_net_id);
                             command.Parameters.AddWithValue("@rating", rating.RatingValue);
 
                             command.ExecuteNonQuery();
