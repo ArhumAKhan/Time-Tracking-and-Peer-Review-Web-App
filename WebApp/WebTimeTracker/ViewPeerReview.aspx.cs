@@ -8,8 +8,6 @@ using System.Web.UI.WebControls;
 using MySql.Data.MySqlClient;
 using static PeerReviewApp.PeerReviewEntry;
 
-// NOTE: SOME COMMENTS MAY BE INACCURATE (AS THIS ROUGH DRAFT IS MOSTLY COPY AND PASTE FROM PeerReviewEntry.aspx.cs)
-
 namespace WebTimeTracker
 {
     public partial class ViewPeerReview : System.Web.UI.Page
@@ -24,140 +22,110 @@ namespace WebTimeTracker
                 Response.Redirect("Login.aspx");
             }
 
-            // Get the current date
-            string currentDate = DateTime.Now.ToString("yyyy-MM-dd");
-
-            int pr_id = FindPeerReview(currentDate);
+            // Get all peer reviews for the user in the current semester
+            List<int> pr_ids = FindPeerReviews();
 
             string user_net_ID = Session["net_id"].ToString();
 
-            // Get the current date and find any peer review criteria for that date
-            List<Criteria> criteria = GetCriteria(pr_id);
-
-            BuildTable(criteria, pr_id, user_net_ID);
+            // Loop through each peer review and build a table
+            foreach (int pr_id in pr_ids)
+            {
+                List<Criteria> criteria = GetCriteria(pr_id);
+                BuildTable(criteria, pr_id, user_net_ID);
+            }
         }
 
-        // Function to find the peer review for the current date
-        private int FindPeerReview(string currentDate)
+        // Function to find all peer reviews for the current semester
+        private List<int> FindPeerReviews()
         {
+            List<int> pr_ids = new List<int>();
             using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
                 connection.Open();
 
-                // Query DB to find the peer review accepting submissions for the current date
+                // Adjust this query as needed to fit your semester criteria
                 string pr_query = "SELECT pr_id " +
                                   "FROM peer_review " +
-                                  "WHERE end_date < @currentDate";
+                                  "WHERE start_date <= @currentDate AND end_date >= @currentDate";
 
                 MySqlCommand pr_command = new MySqlCommand(pr_query, connection);
+                pr_command.Parameters.AddWithValue("@currentDate", DateTime.Now.ToString("yyyy-MM-dd"));
 
-                // Set the parameter for the query
-                pr_command.Parameters.AddWithValue("@currentDate", "2024-11-05");
+                using (MySqlDataReader reader = pr_command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        pr_ids.Add(Convert.ToInt32(reader["pr_id"]));
+                    }
+                }
 
-                // Execute the query and get the peer review ID
-                object result = pr_command.ExecuteScalar();
-
-                // Save the peer review ID if it exists
-                int pr_id = result != null ? Convert.ToInt32(result) : -1;
-
-                // Close DB connection
                 connection.Close();
-
-                // Return the peer review ID
-                return pr_id;
             }
+
+            return pr_ids;
         }
 
-        // Function to get the peer review criteria for the current date
+        // Function to get criteria for a specific peer review
         private List<Criteria> GetCriteria(int pr_id)
         {
             using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
                 connection.Open();
 
-                // Query DB to get the criteria for the current date
                 string criteria_query = "SELECT criteria_id, criteria_desc " +
                                         "FROM pr_criteria " +
                                         "WHERE pr_id = @pr_id";
 
                 using (MySqlCommand criteria_command = new MySqlCommand(criteria_query, connection))
                 {
-                    // Set the parameters for the query
                     criteria_command.Parameters.AddWithValue("@pr_id", pr_id);
+
+                    List<Criteria> criteria = new List<Criteria>();
 
                     using (MySqlDataReader reader = criteria_command.ExecuteReader())
                     {
-                        List<Criteria> criteria = new List<Criteria>();
-
-                        // Compile all found criteria into a list
                         while (reader.Read())
                         {
-                            int criteriaId = int.Parse(reader["criteria_id"].ToString());
-                            string criteriaDesc = reader["criteria_desc"].ToString();
-
-                            criteria.Add(new Criteria { CriteriaId = criteriaId, CriteriaDesc = criteriaDesc });
+                            criteria.Add(new Criteria
+                            {
+                                CriteriaId = Convert.ToInt32(reader["criteria_id"]),
+                                CriteriaDesc = reader["criteria_desc"].ToString()
+                            });
                         }
-
-                        // Close DB connection and return the list of criteria
-                        connection.Close();
-                        return criteria;
                     }
+
+                    connection.Close();
+                    return criteria;
                 }
             }
         }
 
-        // Function to build the table for the peer review form
+        // Build a table for each peer review's criteria and ratings
         private void BuildTable(List<Criteria> criteria, int pr_id, string user_net_id)
         {
-            // Initialize the table
-            Table table = new Table
-            {
-                ID = "ReviewTable"
-            };
-
-            // Create the header row for the table
+            Table table = new Table { ID = $"ReviewTable_{pr_id}" };
             TableRow headerRow = new TableRow();
 
-            // Add label for member name column
-            TableHeaderCell headerCell = new TableHeaderCell
-            {
-                Text = ""
-            };
+            TableHeaderCell headerCell = new TableHeaderCell { Text = "Criteria" };
             headerRow.Cells.Add(headerCell);
 
             TableRow tableRatingsRow = new TableRow();
-
-            TableCell avgLabelCell = new TableCell
-            {
-                Text = "Average Rating:"
-            };
-
+            TableCell avgLabelCell = new TableCell { Text = "Average Rating:" };
             tableRatingsRow.Cells.Add(avgLabelCell);
 
-            // Insert the criteria as headers for rest of the columns
             foreach (Criteria c in criteria)
             {
-                headerCell = new TableHeaderCell
-                {
-                    Text = c.CriteriaDesc
-                };
+                headerCell = new TableHeaderCell { Text = c.CriteriaDesc };
                 headerRow.Cells.Add(headerCell);
 
                 double avgRating = GetAverageRating(pr_id, c.CriteriaId, user_net_id);
-
-                TableCell ratingsCell = new TableCell{
-                    Text = avgRating.ToString()
-                };
-
+                TableCell ratingsCell = new TableCell { Text = avgRating.ToString() };
                 tableRatingsRow.Cells.Add(ratingsCell);
             }
 
-            // Add the header row to the table
             table.Rows.Add(headerRow);
-
             table.Rows.Add(tableRatingsRow);
 
-            // Add the table to the placeholder
             RatingsTablePlaceholder.Controls.Add(table);
         }
 
@@ -167,28 +135,20 @@ namespace WebTimeTracker
             {
                 connection.Open();
 
-                // Query DB to get the criteria for the current date
                 string criteria_query = "SELECT AVG(prr.rating) " +
                                         "FROM pr_ratings AS prr JOIN peer_review AS pr ON prr.pr_id = pr.pr_id " +
-                                        "WHERE prr.for_net_id = @user_net_id AND pr.pr_id = @pr_id";
+                                        "WHERE prr.for_net_id = @user_net_id AND pr.pr_id = @pr_id AND prr.criteria_id = @criteria_id";
 
                 using (MySqlCommand rating_command = new MySqlCommand(criteria_query, connection))
                 {
-                    // Set the parameters for the query
                     rating_command.Parameters.AddWithValue("@user_net_id", user_net_id);
                     rating_command.Parameters.AddWithValue("@pr_id", pr_id);
+                    rating_command.Parameters.AddWithValue("@criteria_id", criteria_id);
 
-                    // Execute the query and get the peer review ID
                     object result = rating_command.ExecuteScalar();
-
-                    // Save the peer review ID if it exists
                     double avgRating = result != null ? Convert.ToDouble(result) : -1;
 
-                    System.Diagnostics.Debug.WriteLine("Average rating: " + avgRating);
-
-                    // Close DB connection and return the list of criteria
                     connection.Close();
-
                     return avgRating;
                 }
             }
