@@ -57,16 +57,7 @@ namespace YourNamespace
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.DropDownList hoursLogged;
-
-        /// <summary>
-        /// minutesLogged control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.DropDownList minutesLogged;
+        protected global::System.Web.UI.WebControls.TextBox hoursLogged;
 
         /// <summary>
         /// entryDescription control.

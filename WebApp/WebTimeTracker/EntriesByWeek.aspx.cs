@@ -4,8 +4,6 @@ using System.Configuration;
 using System.Data;
 using System.Web.UI.WebControls;
 using System.Web.UI;
-using Org.BouncyCastle.Utilities.Collections;
-using System.EnterpriseServices.CompensatingResourceManager;
 
 namespace YourNamespace
 {
@@ -56,7 +54,7 @@ namespace YourNamespace
             DateTime endOfWeek = startOfWeek.AddDays(6); // End of current week (Sunday)
 
             // Set label to indicate it's the current week
-            lblWeekInfo.Text = $"Current Week: {startOfWeek.ToString("MM/dd/yyyy")} - {endOfWeek.ToString("MM/dd/yyyy")}";
+            lblWeekInfo.Text = $"Current Week: {startOfWeek:MM/dd/yyyy} - {endOfWeek:MM/dd/yyyy}";
 
             // Load the entries for the calculated week
             LoadTimeEntries(startOfWeek, endOfWeek);
@@ -71,7 +69,7 @@ namespace YourNamespace
             DateTime endOfPreviousWeek = startOfPreviousWeek.AddDays(6); // End of previous week (Sunday)
 
             // Set label to indicate it's the previous week
-            lblWeekInfo.Text = $"Previous Week: {startOfPreviousWeek.ToString("MM/dd/yyyy")} - {endOfPreviousWeek.ToString("MM/dd/yyyy")}";
+            lblWeekInfo.Text = $"Previous Week: {startOfPreviousWeek:MM/dd/yyyy} - {endOfPreviousWeek:MM/dd/yyyy}";
 
             // Load the entries for the calculated week
             LoadTimeEntries(startOfPreviousWeek, endOfPreviousWeek);
@@ -80,7 +78,6 @@ namespace YourNamespace
         // New method to load all entries for the entire project
         private void LoadTimeEntriesForEntireProject()
         {
-            // Set label to indicate it's the entire project
             lblWeekInfo.Text = "Entire Project: ";
 
             string connectionString = ConfigurationManager.ConnectionStrings["MySqlConnectionString"].ConnectionString;
@@ -92,8 +89,9 @@ namespace YourNamespace
                     conn.Open();
 
                     // SQL query to retrieve all time entries for the entire project
-                    string query = @"SELECT log_id, utd_id, course_id, log_date, hours_logged, work_desc FROM time_logs 
-                                    WHERE  utd_id = @utdId AND course_id = @courseId ORDER BY log_date";
+                    string query = @"SELECT log_id, utd_id, course_id, log_date, hours_logged, minutes_logged, work_desc 
+                                     FROM time_logs 
+                                     WHERE utd_id = @utdId AND course_id = @courseId ORDER BY log_date";
 
                     MySqlCommand cmd = new MySqlCommand(query, conn);
                     cmd.Parameters.AddWithValue("@utdId", utdId);
@@ -107,15 +105,16 @@ namespace YourNamespace
                     gvTimeEntries.DataSource = dt;
                     gvTimeEntries.DataBind();
 
-                    calculateTotalHours(dt);
+                    // Calculate total hours and minutes
+                    CalculateTotalHours(dt);
 
-                    // Set the total hours and minutes in the label
                     lblTotalHours.Text = $"Total Hours Logged: {totalHoursLogged} hours, {totalMinutesLogged} minutes";
                 }
                 catch (Exception ex)
                 {
                     // Handle errors (for example, log them)
-                    // Display error message (optional)
+                    //lblMessage.Text = "Error loading data: " + ex.Message;
+                    //lblMessage.ForeColor = System.Drawing.Color.Red;
                 }
             }
         }
@@ -131,19 +130,17 @@ namespace YourNamespace
                     conn.Open();
 
                     // SQL query to retrieve time entries for the specified week
-                    string query = @"SELECT log_id, utd_id, course_id, log_date, hours_logged, work_desc 
+                    string query = @"SELECT log_id, utd_id, course_id, log_date, hours_logged, minutes_logged, work_desc 
                                      FROM time_logs
                                      WHERE log_date BETWEEN @startDate AND @endDate
                                         AND utd_id = @utdId AND course_id = @courseId 
-                                      ORDER BY log_date";
+                                     ORDER BY log_date";
 
                     MySqlCommand cmd = new MySqlCommand(query, conn);
                     cmd.Parameters.AddWithValue("@startDate", startDate.ToString("yyyy-MM-dd"));
                     cmd.Parameters.AddWithValue("@endDate", endDate.ToString("yyyy-MM-dd"));
                     cmd.Parameters.AddWithValue("@utdId", utdId);
                     cmd.Parameters.AddWithValue("@courseId", courseId);
-
-
 
                     MySqlDataAdapter da = new MySqlDataAdapter(cmd);
                     DataTable dt = new DataTable();
@@ -153,30 +150,30 @@ namespace YourNamespace
                     gvTimeEntries.DataSource = dt;
                     gvTimeEntries.DataBind();
 
-                    calculateTotalHours(dt);
+                    // Calculate total hours and minutes
+                    CalculateTotalHours(dt);
 
-                    // Set the total hours and minutes in the label
                     lblTotalHours.Text = $"Total Hours Logged: {totalHoursLogged} hours, {totalMinutesLogged} minutes";
                 }
                 catch (Exception ex)
                 {
                     // Handle errors (for example, log them)
-                    // Display error message (optional)
+                    //lblMessage.Text = "Error loading data: " + ex.Message;
+                    //lblMessage.ForeColor = System.Drawing.Color.Red;
                 }
             }
         }
 
-        private void calculateTotalHours(DataTable dt)
+        private void CalculateTotalHours(DataTable dt)
         {
             totalHoursLogged = 0;
             totalMinutesLogged = 0;
 
-            // Calculate total hours and minutes
+            // Sum up hours and minutes from each row
             foreach (DataRow row in dt.Rows)
             {
-                decimal totalDecimalHours = Convert.ToDecimal(row["hours_logged"]);
-                int hours = (int)Math.Floor(totalDecimalHours); // Extract hours as an integer
-                int minutes = (int)Math.Floor((totalDecimalHours - hours) * 60); // Extract minutes as an integer
+                int hours = Convert.ToInt32(row["hours_logged"]);
+                int minutes = Convert.ToInt32(row["minutes_logged"]);
 
                 totalHoursLogged += hours;
                 totalMinutesLogged += minutes;
@@ -188,22 +185,6 @@ namespace YourNamespace
                 totalHoursLogged += totalMinutesLogged / 60; // Add additional hours
                 totalMinutesLogged = totalMinutesLogged % 60; // Remainder minutes
             }
-
         }
-
-        // Event handler for RowDataBound event to calculate the total logged hours
-        //protected void gvTimeEntries_RowDataBound(object sender, GridViewRowEventArgs e)
-        //{
-        //    //if (e.Row.RowType == DataControlRowType.DataRow)
-        //    //{
-        //    //    // Calculate the total hours logged
-        //    //    decimal totalDecimalHours = Convert.ToDecimal(DataBinder.Eval(e.Row.DataItem, "hours_logged"));
-        //    //    decimal hours = Math.Floor(totalDecimalHours); // Extract hours
-        //    //    decimal minutes = (totalDecimalHours - hours) * 60; // Extract minutes
-
-        //    //    totalHoursLogged += hours;
-        //    //    totalMinutesLogged += minutes;
-        //    //}
-        //}
     }
 }

@@ -230,6 +230,7 @@
     <Content Include="Scripts\WebForms\WebForms.js" />
     <Content Include="Scripts\WebForms\WebParts.js" />
     <Content Include="Scripts\WebForms\WebUIValidation.js" />
+    <Content Include="SideMenu.ascx" />
     <Content Include="Site.Master" />
     <Content Include="TimeEntry.aspx" />
     <Content Include="ViewSwitcher.ascx" />
@@ -286,6 +287,13 @@
       <DependentUpon>PeerReviewEntry.aspx</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SideMenu.ascx.cs">
+      <DependentUpon>SideMenu.ascx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="SideMenu.ascx.designer.cs">
+      <DependentUpon>SideMenu.ascx</DependentUpon>
+    </Compile>
     <Compile Include="Site.Master.cs">
       <DependentUpon>Site.Master</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>

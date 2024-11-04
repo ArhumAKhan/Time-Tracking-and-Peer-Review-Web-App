@@ -47,8 +47,12 @@
         }
         h1 {
             text-align: center;
+            color: #FF8C00; /* Dark orange */
         }
         label {
+            font-weight: bold;
+        }
+        .week-info {
             font-weight: bold;
         }
         select, input[type="text"], input[type="date"], textarea {
@@ -68,34 +72,39 @@
             background-color: #cccccc;
             cursor: not-allowed;
         }
+        .table-header {
+            background-color: #808080; /* Grey background */
+            color: white; /* White font */
+        }
+        .table td {
+            padding: 10px; /* Adds padding to table cells */
+        }
     </style>
 </head>
 <body>
  
     <form id="form1" runat="server">
-        <div class="sidebar">
-            <a href="TimeEntry.aspx">Enter Time</a>
-            <a href="EntriesByWeek.aspx?week=current">View Current Week</a>
-            <a href="EntriesByWeek.aspx?week=previous">View Previous Week</a>
-            <a href="EntriesByWeek.aspx?week=all">View Entire Project</a>
-            <a href="PeerReviewEntry.aspx">Peer Review</a>
-        </div>
+    <!-- Include the sidemenu from an external file -->
+    <%@ Register Src="~/SideMenu.ascx" TagPrefix="uc" TagName="Sidebar" %>
+    <uc:Sidebar runat="server" />
         <div class="container">
+            <h1>Time Entries for Week</h1>
             <!-- Label to display whether it's current or previous week and the date range -->
             <asp:Label ID="lblWeekInfo" runat="server" CssClass="week-info"></asp:Label>
 
             <br /><br />            
 
             <!-- GridView to display the time entries -->
-            <asp:GridView ID="gvTimeEntries" runat="server" AutoGenerateColumns="False" ShowFooter="True" CssClass="table table-striped">
+            <asp:GridView ID="gvTimeEntries" runat="server" AutoGenerateColumns="False" ShowFooter="False" CssClass="table table-striped">
                 <Columns>
-                    <asp:BoundField DataField="log_date" HeaderText="Date" DataFormatString="{0:MM/dd/yyyy}" />
-                     <asp:TemplateField HeaderText="Hours Logged">
+                    <asp:BoundField DataField="log_date" HeaderText="Date" DataFormatString="{0:MM/dd/yyyy}" HeaderStyle-CssClass="table-header" ItemStyle-CssClass="table-cell" />
+                     <asp:TemplateField HeaderText="Hours Logged" HeaderStyle-CssClass="table-header" ItemStyle-CssClass="table-cell">
                         <ItemTemplate>
-                            <%# String.Format("{0:00}:{1:00}", Math.Floor(Convert.ToDouble(Eval("hours_logged"))), (Convert.ToDouble(Eval("hours_logged")) % 1) * 60) %>
+                            <%# String.Format("{0:00}:{1:00}", Eval("hours_logged"), Eval("minutes_logged")) %>
                         </ItemTemplate>
                     </asp:TemplateField>
-                    <asp:BoundField DataField="work_desc" HeaderText="Description" />
+
+                    <asp:BoundField DataField="work_desc" HeaderText="Description" HeaderStyle-CssClass="table-header" ItemStyle-CssClass="table-cell" />
                 </Columns>
             </asp:GridView>
 
