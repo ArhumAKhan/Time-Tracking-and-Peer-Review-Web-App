@@ -276,6 +276,7 @@ namespace PeerReviewApp
         {
             Button submitButton = FindControl("SubmitButton") as Button;
             submitButton.Visible = true;
+            submitButton.OnClientClick = "return confirm('Are you sure you want to submit your peer review?');";
             submitButton.Click += (s, args) => SubmitButton_Click(criteria, teamMembers, user_net_id, pr_id);
         }
 
