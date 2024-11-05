@@ -6,10 +6,6 @@
 <head runat="server">
     <title>Peer Review Entry</title>
     <style>
-        .criteria {
-            text-align: center;
-            width: 200px;
-        }
         th, td {
             text-align: center;
             border: 1px solid black;
@@ -24,33 +20,6 @@
         }
         .submit-btn {
             margin-top: 20px;
-        }
-        .sidebar {
-            width: 200px;
-            background-color: #f4f4f4;
-            padding: 20px;
-            height: 100vh;
-            position: fixed;
-            top: 0;
-            left: 0;
-            overflow-y: auto;
-        }
-        .sidebar h2 {
-            font-size: 18px;
-            text-align: center;
-        }
-        .sidebar a {
-            display: block;
-            padding: 10px;
-            margin: 5px 0;
-            color: #333;
-            text-decoration: none;
-            background-color: #e2e2e2;
-            text-align: center;
-            border-radius: 5px;
-        }
-        .sidebar a:hover {
-            background-color: #ddd;
         }
         .container {
             margin-left: 220px;
