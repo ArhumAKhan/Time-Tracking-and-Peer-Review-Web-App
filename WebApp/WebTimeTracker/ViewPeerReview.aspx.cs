@@ -27,18 +27,21 @@ namespace WebTimeTracker
             // Get the current date
             string currentDate = DateTime.Now.ToString("yyyy-MM-dd");
 
-            int pr_id = FindPeerReview(currentDate);
-
             string user_net_ID = Session["net_id"].ToString();
 
-            // Get the current date and find any peer review criteria for that date
-            List<Criteria> criteria = GetCriteria(pr_id);
+            List<int> pr_ids = FindPeerReview(currentDate);
 
-            BuildTable(criteria, pr_id, user_net_ID);
+            foreach (int pr_id in pr_ids)
+            {
+                // Get the current date and find any peer review criteria for that date
+                List<Criteria> criteria = GetCriteria(pr_id);
+
+                BuildTable(criteria, pr_id, user_net_ID);
+            }
         }
 
         // Function to find the peer review for the current date
-        private int FindPeerReview(string currentDate)
+        private List<int> FindPeerReview(string currentDate)
         {
             using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
@@ -49,22 +52,28 @@ namespace WebTimeTracker
                                   "FROM peer_review " +
                                   "WHERE end_date < @currentDate";
 
-                MySqlCommand pr_command = new MySqlCommand(pr_query, connection);
+                using (MySqlCommand command = new MySqlCommand(pr_query, connection))
+                {
+                    // Set the parameters for the query
+                    command.Parameters.AddWithValue("@currentDate", "2024-11-05");
 
-                // Set the parameter for the query
-                pr_command.Parameters.AddWithValue("@currentDate", "2024-11-05");
+                    using (MySqlDataReader reader = command.ExecuteReader())
+                    {
+                        List<int> pr_ids = new List<int>();
 
-                // Execute the query and get the peer review ID
-                object result = pr_command.ExecuteScalar();
+                        // Compile all found criteria into a list
+                        while (reader.Read())
+                        {
+                            int pr_id = int.Parse(reader["pr_id"].ToString());
 
-                // Save the peer review ID if it exists
-                int pr_id = result != null ? Convert.ToInt32(result) : -1;
+                            pr_ids.Add(pr_id);
+                        }
 
-                // Close DB connection
-                connection.Close();
-
-                // Return the peer review ID
-                return pr_id;
+                        // Close DB connection and return the list of criteria
+                        connection.Close();
+                        return pr_ids;
+                    }
+                }
             }
         }
 
