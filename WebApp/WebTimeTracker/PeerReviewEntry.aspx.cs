@@ -35,8 +35,12 @@ namespace PeerReviewApp
             // If there are no peer reviews for the current date, peer review submission is not allowed
             if (pr_id == -1)
             {
-                string script = "alert('Error: No peer review submission for today.');";
-                ClientScript.RegisterStartupScript(this.GetType(), "alert", script, true);
+                Literal messageLiteral = new Literal
+                {
+                    Text = $"<div>No Peer Review is currently expecting submissions.</div>" +
+                           "<div>If this sounds incorrect, please contact support.</div>"
+                };
+                ReviewTablePlaceholder.Controls.Add(messageLiteral);
                 return;
             }
 
@@ -45,8 +49,12 @@ namespace PeerReviewApp
             // Check if the user has already made a submission for this peer review
             if (HasAlreadySubmitted(user_net_ID, pr_id))
             {
-                string script = "alert('Error: You have already submitted a peer review for today.');";
-                ClientScript.RegisterStartupScript(this.GetType(), "alert", script, true);
+                Literal messageLiteral = new Literal
+                {
+                    Text = $"<div>Congratulations! You've already made a submission for the currently active Peer Review.</div>" +
+                           "<div>If this sounds incorrect, please contact support.</div>"
+                };
+                ReviewTablePlaceholder.Controls.Add(messageLiteral);
                 return;
             }
 
