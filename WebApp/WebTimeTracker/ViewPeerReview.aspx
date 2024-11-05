@@ -60,14 +60,8 @@
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <a href="TimeEntry.aspx">Enter Time</a>
-        <a href="EntriesByWeek.aspx?week=current">View Current Week</a>
-        <a href="EntriesByWeek.aspx?week=previous">View Previous Week</a>
-        <a href="EntriesByWeek.aspx?week=all">View Entire Project</a>
-        <a href="PeerReviewEntry.aspx">Peer Review</a>
-        <a href="ViewPeerReview.aspx">Peer Review</a>
-    </div>
+    <%@ Register Src="~/SideMenu.ascx" TagPrefix="uc" TagName="Sidebar" %>
+    <uc:Sidebar runat="server" />
     <div class="container">
         <h1>Your Ratings</h1>
         <asp:PlaceHolder ID="RatingsTablePlaceholder" runat="server"></asp:PlaceHolder>

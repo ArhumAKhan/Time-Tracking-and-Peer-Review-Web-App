@@ -37,4 +37,6 @@
     <a href="EntriesByWeek.aspx?week=current">View Current Week</a>
     <a href="EntriesByWeek.aspx?week=previous">View Previous Week</a>
     <a href="EntriesByWeek.aspx?week=all">View Entire Project</a>
+    <a href="PeerReviewEntry.aspx">Peer Review Entry</a>
+    <a href="ViewPeerReview.aspx">View Peer Review Ratings</a>
 </div>

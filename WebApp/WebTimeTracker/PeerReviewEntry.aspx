@@ -60,14 +60,9 @@
     </style>
 </head>
 <body>
+    <%@ Register Src="~/SideMenu.ascx" TagPrefix="uc" TagName="Sidebar" %>
+    <uc:Sidebar runat="server" />
     <form id="peerReviewForm" runat="server">
-        <div class="sidebar">
-            <a href="TimeEntry.aspx">Enter Time</a>
-            <a href="EntriesByWeek.aspx?week=current">View Current Week</a>
-            <a href="EntriesByWeek.aspx?week=previous">View Previous Week</a>
-            <a href="EntriesByWeek.aspx?week=all">View Entire Project</a>
-            <a href="PeerReviewEntry.aspx">Peer Review</a>
-        </div>
         <div class="container">
             <h1>Peer Review Entry</h1>
             <asp:PlaceHolder ID="ReviewTablePlaceholder" runat="server"></asp:PlaceHolder>
