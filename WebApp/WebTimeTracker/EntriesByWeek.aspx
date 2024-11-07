@@ -1,4 +1,4 @@
-﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="EntriesByWeek.aspx.cs" Inherits="YourNamespace.EntriesByWeek" %>
+﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="EntriesByWeek.aspx.cs" Inherits="WebTracker.EntriesByWeek" %>
 
 <!DOCTYPE html>
 <html lang="en">

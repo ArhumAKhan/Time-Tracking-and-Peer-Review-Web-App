@@ -7,7 +7,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace YourNamespace
+namespace WebTracker
 {
 
 

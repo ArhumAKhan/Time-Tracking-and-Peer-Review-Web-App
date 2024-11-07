@@ -1,4 +1,4 @@
-﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="TimeEntry.aspx.cs" Inherits="YourNamespace.TimeEntry" %>
+﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="TimeEntry.aspx.cs" Inherits="WebTracker.TimeEntry" %>
 
 <!DOCTYPE html>
 <html lang="en">

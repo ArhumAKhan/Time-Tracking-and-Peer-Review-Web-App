@@ -5,15 +5,29 @@ using System.Data;
 using System.Web.UI.WebControls;
 using System.Web.UI;
 
-namespace YourNamespace
+namespace WebTracker
 {
+    // ******************************************************************************
+    // * Entries By Week Page for WebTracker Application
+    // *
+    // * Written by Nikhil Giridharan for CS 4485.
+    // * NetID: nxg220038
+    // *
+    // * This page displays time entries logged by a user for a specified week, previous week,
+    // * current week, or the entire project. The user can view their logged hours and the
+    // * application calculates total hours and minutes logged based on their entries.
+    // * 
+    // ******************************************************************************
     public partial class EntriesByWeek : System.Web.UI.Page
     {
         private int totalHoursLogged = 0; // Store total hours
         private int totalMinutesLogged = 0; // Store total minutes
-        private string utdId;
-        private string courseId = "cs4485";
+        private string utdId; // User's UTD ID
+        private string courseId = "cs4485"; // Fixed course ID for entries
 
+        // ** Page Load Event **
+        // This method runs when the page loads and handles displaying entries for the current, previous week,
+        // or all entries based on the "week" parameter in the query string.
         protected void Page_Load(object sender, EventArgs e)
         {
             if (!IsPostBack)
@@ -28,6 +42,8 @@ namespace YourNamespace
                     // If utd_id is not found in session, redirect back to login page
                     Response.Redirect("Login.aspx");
                 }
+
+                // Retrieve 'week' parameter from query string to determine which data to load
                 string week = Request.QueryString["week"];
 
                 if (week == "previous")
@@ -36,7 +52,7 @@ namespace YourNamespace
                 }
                 else if (week == "all")
                 {
-                    LoadTimeEntriesForEntireProject(); // Load all entries
+                    LoadTimeEntriesForEntireProject(); // Load all entries for the project
                 }
                 else
                 {
@@ -45,9 +61,11 @@ namespace YourNamespace
             }
         }
 
+        // ** Load Current Week's Entries **
+        // Loads time entries for the current week (Monday to Sunday) and binds data to the GridView.
         private void LoadTimeEntriesForCurrentWeek()
         {
-            // Calculate the start and end dates of the current week (Monday to Sunday)
+            // Calculate the start and end dates of the current week
             DateTime today = DateTime.Now;
             int daysSinceMonday = (today.DayOfWeek == DayOfWeek.Sunday) ? 6 : (int)today.DayOfWeek - 1;
             DateTime startOfWeek = today.AddDays(-daysSinceMonday); // Start of current week (Monday)
@@ -56,13 +74,15 @@ namespace YourNamespace
             // Set label to indicate it's the current week
             lblWeekInfo.Text = $"Current Week: {startOfWeek:MM/dd/yyyy} - {endOfWeek:MM/dd/yyyy}";
 
-            // Load the entries for the calculated week
+            // Load entries for the calculated week range
             LoadTimeEntries(startOfWeek, endOfWeek);
         }
 
+        // ** Load Previous Week's Entries **
+        // Loads time entries for the previous week (Monday to Sunday) and binds data to the GridView.
         private void LoadTimeEntriesForPreviousWeek()
         {
-            // Calculate the start and end dates of the previous week (Monday to Sunday)
+            // Calculate the start and end dates of the previous week
             DateTime today = DateTime.Now;
             int daysSinceMonday = (today.DayOfWeek == DayOfWeek.Sunday) ? 6 : (int)today.DayOfWeek - 1;
             DateTime startOfPreviousWeek = today.AddDays(-daysSinceMonday - 7); // Start of previous week (Monday)
@@ -71,11 +91,12 @@ namespace YourNamespace
             // Set label to indicate it's the previous week
             lblWeekInfo.Text = $"Previous Week: {startOfPreviousWeek:MM/dd/yyyy} - {endOfPreviousWeek:MM/dd/yyyy}";
 
-            // Load the entries for the calculated week
+            // Load entries for the calculated week range
             LoadTimeEntries(startOfPreviousWeek, endOfPreviousWeek);
         }
 
-        // New method to load all entries for the entire project
+        // ** Load Entire Project's Entries **
+        // Loads all time entries for the entire project and binds data to the GridView.
         private void LoadTimeEntriesForEntireProject()
         {
             lblWeekInfo.Text = "Entire Project: ";
@@ -88,7 +109,7 @@ namespace YourNamespace
                 {
                     conn.Open();
 
-                    // SQL query to retrieve all time entries for the entire project
+                    // Query to retrieve all time entries for the user and specified course
                     string query = @"SELECT log_id, utd_id, course_id, log_date, hours_logged, minutes_logged, work_desc 
                                      FROM time_logs 
                                      WHERE utd_id = @utdId AND course_id = @courseId ORDER BY log_date";
@@ -101,24 +122,26 @@ namespace YourNamespace
                     DataTable dt = new DataTable();
                     da.Fill(dt);
 
-                    // Bind the data to the GridView
+                    // Bind data to the GridView
                     gvTimeEntries.DataSource = dt;
                     gvTimeEntries.DataBind();
 
-                    // Calculate total hours and minutes
+                    // Calculate total hours and minutes from the entries
                     CalculateTotalHours(dt);
 
                     lblTotalHours.Text = $"Total Hours Logged: {totalHoursLogged} hours, {totalMinutesLogged} minutes";
                 }
                 catch (Exception ex)
                 {
-                    // Handle errors (for example, log them)
-                    //lblMessage.Text = "Error loading data: " + ex.Message;
-                    //lblMessage.ForeColor = System.Drawing.Color.Red;
+                    // Error handling (e.g., log errors or display to user if needed)
+                    // lblMessage.Text = "Error loading data: " + ex.Message;
+                    // lblMessage.ForeColor = System.Drawing.Color.Red;
                 }
             }
         }
 
+        // ** Load Time Entries for Specified Date Range **
+        // Loads time entries between the specified start and end dates and binds data to the GridView.
         private void LoadTimeEntries(DateTime startDate, DateTime endDate)
         {
             string connectionString = ConfigurationManager.ConnectionStrings["MySqlConnectionString"].ConnectionString;
@@ -129,7 +152,7 @@ namespace YourNamespace
                 {
                     conn.Open();
 
-                    // SQL query to retrieve time entries for the specified week
+                    // SQL query to retrieve time entries for the specified date range
                     string query = @"SELECT log_id, utd_id, course_id, log_date, hours_logged, minutes_logged, work_desc 
                                      FROM time_logs
                                      WHERE log_date BETWEEN @startDate AND @endDate
@@ -146,30 +169,32 @@ namespace YourNamespace
                     DataTable dt = new DataTable();
                     da.Fill(dt);
 
-                    // Bind the data to the GridView
+                    // Bind data to the GridView
                     gvTimeEntries.DataSource = dt;
                     gvTimeEntries.DataBind();
 
-                    // Calculate total hours and minutes
+                    // Calculate total hours and minutes from the entries
                     CalculateTotalHours(dt);
 
                     lblTotalHours.Text = $"Total Hours Logged: {totalHoursLogged} hours, {totalMinutesLogged} minutes";
                 }
                 catch (Exception ex)
                 {
-                    // Handle errors (for example, log them)
-                    //lblMessage.Text = "Error loading data: " + ex.Message;
-                    //lblMessage.ForeColor = System.Drawing.Color.Red;
+                    // Error handling (e.g., log errors or display to user if needed)
+                    // lblMessage.Text = "Error loading data: " + ex.Message;
+                    // lblMessage.ForeColor = System.Drawing.Color.Red;
                 }
             }
         }
 
+        // ** Calculate Total Hours and Minutes **
+        // Summarizes hours and minutes from the DataTable entries and updates total hours and minutes.
         private void CalculateTotalHours(DataTable dt)
         {
             totalHoursLogged = 0;
             totalMinutesLogged = 0;
 
-            // Sum up hours and minutes from each row
+            // Iterate through each entry to sum up hours and minutes
             foreach (DataRow row in dt.Rows)
             {
                 int hours = Convert.ToInt32(row["hours_logged"]);
