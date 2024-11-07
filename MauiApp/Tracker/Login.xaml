@@ -25,10 +25,10 @@
 
                     <StackLayout VerticalOptions="Center">
                         <Label Text="NetID"/>
-                        <Entry x:Name="NetIdEntry" WidthRequest="200" Margin="0,0,0,10" Placeholder="NetID" />
+                        <Entry x:Name="NetIdEntry" WidthRequest="200" Margin="0,0,0,10" Placeholder="NetID" TextColor="Black" />
 
                         <Label Text="Password"/>
-                        <Entry x:Name="PasswordEntry" WidthRequest="200" Margin="0,0,0,10" IsPassword="True" Placeholder="Password" />
+                        <Entry x:Name="PasswordEntry" WidthRequest="200" Margin="0,0,0,10" IsPassword="True" Placeholder="Password" TextColor="Black" />
 
                         <!--Add clicked property once Maui App is initialized and MySQL DB is set up-->
                         <Button

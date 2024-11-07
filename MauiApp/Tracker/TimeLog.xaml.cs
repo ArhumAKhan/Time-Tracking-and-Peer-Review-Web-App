@@ -7,12 +7,25 @@ using Microsoft.Maui.Controls;
 
 namespace Tracker
 {
+    // ******************************************************************************
+    // * Time Log Page for Tracker Application
+    // *
+    // * Written by Nikhil Giridharan and Johnny An for CS 4485.
+    // * NetID: nxg220038 and hxa210014
+    // *
+    // * This page retrieves and displays time logs for a specific class in a table format.
+    // * Each row represents a student's attendance log with daily hours and cumulative hours.
+    // *
+    // ******************************************************************************
+
     public partial class TimeLog : ContentPage
     {
         public string ClassName { get; private set; }
         private List<DateTime> DateHeaders { get; set; }
         private List<StudentAttendanceRecord> AttendanceRecords { get; set; }
 
+        // ** Constructor **
+        // Initializes the time log page with the specified class name and loads attendance data.
         public TimeLog(string className)
         {
             ClassName = className;
@@ -21,6 +34,10 @@ namespace Tracker
             AttendanceRecords = new List<StudentAttendanceRecord>();
             LoadAttendanceLog();
         }
+
+        // ** Load Attendance Log **
+        // Connects to the database and retrieves attendance records for each student in the class.
+        // Records are organized by date and displayed in a grid format with cumulative hours.
         private void LoadAttendanceLog()
         {
             using (var connection = new MySqlConnection(DatabaseConfig.ConnectionString))
@@ -29,11 +46,13 @@ namespace Tracker
                 {
                     connection.Open();
 
+                    // ** SQL Query to Retrieve Attendance Data **
+                    // Retrieves UTD ID, log date, hours logged, minutes logged, and student name for the specified class.
                     string query = @"SELECT tl.utd_id, log_date, hours_logged, minutes_logged, CONCAT(first_name, ' ', last_name) AS student_name
-                             FROM time_logs tl
-                             JOIN users us ON tl.utd_id = us.utd_id
-                             WHERE course_id = @courseId
-                             ORDER BY log_date";
+                                     FROM time_logs tl
+                                     JOIN users us ON tl.utd_id = us.utd_id
+                                     WHERE course_id = @courseId
+                                     ORDER BY log_date";
 
                     using (MySqlCommand command = new MySqlCommand(query, connection))
                     {
@@ -44,6 +63,8 @@ namespace Tracker
                             var attendanceData = new Dictionary<int, (string studentName, List<DailyLog> logs)>();
                             var uniqueDates = new HashSet<DateTime>();
 
+                            // ** Process Data Rows **
+                            // Read each row and organize data by student, tracking unique dates for the header.
                             while (reader.Read())
                             {
                                 int utdId = reader.GetInt32("utd_id");
@@ -52,10 +73,8 @@ namespace Tracker
                                 int minutesLogged = reader.GetInt32("minutes_logged");
                                 string studentName = reader.GetString("student_name");
 
-                                // Track unique dates for the header
                                 uniqueDates.Add(logDate);
 
-                                // Add the log to the corresponding student's list
                                 if (!attendanceData.ContainsKey(utdId))
                                 {
                                     attendanceData[utdId] = (studentName, new List<DailyLog>());
@@ -63,21 +82,20 @@ namespace Tracker
                                 attendanceData[utdId].logs.Add(new DailyLog { Date = logDate, Hours = hoursLogged, Minutes = minutesLogged });
                             }
 
-                            // Sort the dates and add to DateHeaders
+                            // Sort unique dates and store in DateHeaders
                             DateHeaders = uniqueDates.OrderBy(d => d).ToList();
 
-                            // Process each student's data and calculate cumulative hours
+                            // Process each student's data to calculate cumulative hours
                             foreach (var studentLog in attendanceData)
                             {
                                 int studentId = studentLog.Key;
                                 var studentName = studentLog.Value.studentName;
                                 var logs = studentLog.Value.logs;
 
-                                // Initialize cumulative hours and minutes
                                 int totalHours = 0;
                                 int totalMinutes = 0;
 
-                                // Create a dictionary to store hours worked for each date
+                                // Calculate hours worked per date and cumulative hours
                                 var hoursPerDate = new Dictionary<DateTime, (int hours, int minutes)>();
                                 foreach (var log in logs)
                                 {
@@ -90,7 +108,7 @@ namespace Tracker
                                 totalHours += totalMinutes / 60;
                                 totalMinutes = totalMinutes % 60;
 
-                                // Create a list of daily hours matching the sorted date headers
+                                // Create a list of daily hours matching sorted dates
                                 var dailyHoursList = new List<string>();
                                 foreach (var date in DateHeaders)
                                 {
@@ -108,11 +126,11 @@ namespace Tracker
                                 // Format cumulative hours as HH:MM
                                 string formattedCumulativeHours = $"{totalHours:D2}:{totalMinutes:D2}";
 
-                                // Add to the AttendanceRecords collection
+                                // Add student attendance record to the collection
                                 AttendanceRecords.Add(new StudentAttendanceRecord
                                 {
                                     StudentId = studentId,
-                                    StudentName = studentName, // Use the studentName from the query
+                                    StudentName = studentName,
                                     CumulativeHours = formattedCumulativeHours,
                                     DailyHours = dailyHoursList
                                 });
@@ -120,40 +138,43 @@ namespace Tracker
                         }
                     }
 
-                    // Generate the table-like Grid layout
+                    // Generate grid layout to display attendance records
                     GenerateGridLayout();
                 }
                 catch (Exception ex)
                 {
-                    // Handle any exceptions that occur during the database operation
+                    // ** Error Handling **
+                    // Display an error message if attendance data fails to load.
                     DisplayAlert("Error", "Unable to load attendance data: " + ex.Message, "OK");
                 }
             }
         }
 
+        // ** Generate Grid Layout **
+        // Dynamically creates a grid layout for attendance records with student names, cumulative hours, and daily logs.
         private void GenerateGridLayout()
         {
-            // Clear existing children in the grid
+            // Clear existing children and define grid columns and rows
             AttendanceGrid.Children.Clear();
             AttendanceGrid.ColumnDefinitions.Clear();
             AttendanceGrid.RowDefinitions.Clear();
 
             // Add column definitions for student name, cumulative hours, and each date
-            AttendanceGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star }); // Student name
-            AttendanceGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star }); // Cumulative hours
+            AttendanceGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+            AttendanceGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
             foreach (var date in DateHeaders)
             {
                 AttendanceGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
             }
 
-            // Add row definitions for header and each student
-            AttendanceGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Header row
+            // Define rows for header and each student
+            AttendanceGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             foreach (var _ in AttendanceRecords)
             {
                 AttendanceGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             }
 
-            // Add header labels with borders
+            // Add header labels
             AddCellWithBorder("Student Name", 0, 0, FontAttributes.Bold);
             AddCellWithBorder("Cumulative Hours", 0, 1, FontAttributes.Bold);
             for (int i = 0; i < DateHeaders.Count; i++)
@@ -161,7 +182,7 @@ namespace Tracker
                 AddCellWithBorder(DateHeaders[i].ToString("MM/dd/yyyy"), 0, i + 2, FontAttributes.Bold);
             }
 
-            // Add student data rows with borders
+            // Add student data rows
             for (int row = 0; row < AttendanceRecords.Count; row++)
             {
                 var record = AttendanceRecords[row];
@@ -169,7 +190,6 @@ namespace Tracker
                 AddCellWithBorder(record.StudentName, row + 1, 0);
                 AddCellWithBorder(record.CumulativeHours, row + 1, 1);
 
-                // Add daily hours data with borders
                 for (int col = 0; col < record.DailyHours.Count; col++)
                 {
                     AddCellWithBorder(record.DailyHours[col], row + 1, col + 2);
@@ -177,10 +197,10 @@ namespace Tracker
             }
         }
 
-        // Helper method to add a cell with a border
+        // ** Helper Method: Add Cell with Border **
+        // Adds a label inside a frame to the grid to simulate a bordered cell.
         private void AddCellWithBorder(string text, int row, int column, FontAttributes fontAttributes = FontAttributes.None)
         {
-            // Create the label
             var label = new Label
             {
                 Text = text,
@@ -190,22 +210,19 @@ namespace Tracker
                 Padding = new Thickness(5)
             };
 
-            // Create a Frame to wrap the label and simulate a border
             var frame = new Frame
             {
                 Content = label,
                 BorderColor = Colors.Gray,
-                CornerRadius = 0, // No rounded corners
-                Padding = 0, // No padding inside the frame
-                HasShadow = false // Disable shadow to make it look like a border
+                CornerRadius = 0,
+                Padding = 0,
+                HasShadow = false
             };
 
-            // Add the frame to the main AttendanceGrid
             AttendanceGrid.Children.Add(frame);
             Grid.SetRow(frame, row);
             Grid.SetColumn(frame, column);
         }
-
     }
 
     public class DailyLog
@@ -214,7 +231,6 @@ namespace Tracker
         public int Hours { get; set; }
         public int Minutes { get; set; }
     }
-
 
     public class StudentAttendanceRecord
     {
