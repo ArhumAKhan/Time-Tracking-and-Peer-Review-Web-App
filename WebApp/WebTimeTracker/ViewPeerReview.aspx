@@ -1,10 +1,10 @@
-﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="PeerReviewEntry.aspx.cs" Inherits="PeerReviewApp.PeerReviewEntry" %>
+﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="ViewPeerReview.aspx.cs" Inherits="WebTimeTracker.ViewPeerReview" %>
 
 <!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head runat="server">
-    <title>Peer Review Entry</title>
+    <title>View Peer Review</title>
     <style>
         table {
             border-collapse: collapse;
@@ -40,12 +40,11 @@
 <body>
     <%@ Register Src="~/SideMenu.ascx" TagPrefix="uc" TagName="Sidebar" %>
     <uc:Sidebar runat="server" />
-    <form id="peerReviewForm" runat="server">
-        <div class="container">
-            <h1>Peer Review Entry</h1>
-            <asp:PlaceHolder ID="ReviewTablePlaceholder" runat="server"></asp:PlaceHolder>
-            <asp:Button ID="SubmitButton" runat="server" Text="Submit" CssClass="submit-btn" Visible="false" />
-        </div>
-    </form>
+    <div class="container">
+        <h1>Your Ratings</h1>
+        <asp:PlaceHolder ID="RatingsTablePlaceholder" runat="server"></asp:PlaceHolder>
+        <asp:Button ID="SubmitButton" runat="server" Text="Submit" CssClass="submit-btn" Visible="false" />
+    </div>
 </body>
 </html>
+

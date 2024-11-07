@@ -233,6 +233,7 @@
     <Content Include="SideMenu.ascx" />
     <Content Include="Site.Master" />
     <Content Include="TimeEntry.aspx" />
+    <Content Include="ViewPeerReview.aspx" />
     <Content Include="ViewSwitcher.ascx" />
     <Content Include="Web.config" />
     <Content Include="Bundle.config" />
@@ -314,6 +315,13 @@
     </Compile>
     <Compile Include="TimeEntry.aspx.designer.cs">
       <DependentUpon>TimeEntry.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ViewPeerReview.aspx.cs">
+      <DependentUpon>ViewPeerReview.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ViewPeerReview.aspx.designer.cs">
+      <DependentUpon>ViewPeerReview.aspx</DependentUpon>
     </Compile>
     <Compile Include="ViewSwitcher.ascx.cs">
       <DependentUpon>ViewSwitcher.ascx</DependentUpon>
