@@ -1,4 +1,4 @@
-﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="PeerReviewEntry.aspx.cs" Inherits="PeerReviewApp.PeerReviewEntry" %>
+﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="PeerReviewEntry.aspx.cs" Inherits="WebTimeTracker.PeerReviewEntry" %>
 
 <!DOCTYPE html>
 

@@ -7,7 +7,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace PeerReviewApp
+namespace WebTimeTracker
 {
 
 

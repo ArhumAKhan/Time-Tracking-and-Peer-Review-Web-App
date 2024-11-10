@@ -6,7 +6,7 @@ using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using MySql.Data.MySqlClient;
-using static PeerReviewApp.PeerReviewEntry;
+using static WebTimeTracker.PeerReviewEntry;
 
 // NOTE: SOME COMMENTS MAY BE INACCURATE (AS THIS ROUGH DRAFT IS MOSTLY COPY AND PASTE FROM PeerReviewEntry.aspx.cs)
 
@@ -55,7 +55,7 @@ namespace WebTimeTracker
                 using (MySqlCommand command = new MySqlCommand(pr_query, connection))
                 {
                     // Set the parameters for the query
-                    command.Parameters.AddWithValue("@currentDate", "2024-11-05");
+                    command.Parameters.AddWithValue("@currentDate", "2024-11-18");
 
                     using (MySqlDataReader reader = command.ExecuteReader())
                     {

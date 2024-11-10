@@ -9,10 +9,10 @@ using System.Web.UI.WebControls;
 using Microsoft.Ajax.Utilities;
 using Newtonsoft.Json;
 using MySql.Data.MySqlClient;
-using static PeerReviewApp.PeerReviewEntry;
+using static WebTimeTracker.PeerReviewEntry;
 using System.Configuration;
 
-namespace PeerReviewApp
+namespace WebTimeTracker
 {
     public partial class PeerReviewEntry : System.Web.UI.Page
     {
