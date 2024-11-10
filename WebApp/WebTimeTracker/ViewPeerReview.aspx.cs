@@ -18,25 +18,28 @@ namespace WebTimeTracker
 
         protected void Page_Load(object sender, EventArgs e)
         {
-            // Validate that the user is logged in
-            if (Session["utd_id"] == null || Session["net_id"] == null)
-            {
-                Response.Redirect("Login.aspx");
-            }
+            if (!IsPostBack) {
+                // Validate that the user is logged in
+                if (Session["utd_id"] == null || Session["net_id"] == null)
+                {
+                    Response.Redirect("Login.aspx");
+                }
 
-            // Get the current date
-            string currentDate = DateTime.Now.ToString("yyyy-MM-dd");
+                // Get the current date
+                string currentDate = DateTime.Now.ToString("yyyy-MM-dd");
 
-            string user_net_ID = Session["net_id"].ToString();
+                string user_net_ID = Session["net_id"].ToString();
 
-            List<int> pr_ids = FindPeerReview(currentDate);
+                List<int> pr_ids = FindPeerReview(currentDate);
 
-            foreach (int pr_id in pr_ids)
-            {
-                // Get the current date and find any peer review criteria for that date
-                List<Criteria> criteria = GetCriteria(pr_id);
+                for (int i = 0; i < 2; i++)
+                {
+                    int pr_id = pr_ids[0];
+                    // Get the current date and find any peer review criteria for that date
+                    List<Criteria> criteria = GetCriteria(pr_id);
 
-                BuildTable(criteria, pr_id, user_net_ID);
+                    BuildTable(criteria, pr_id, user_net_ID);
+                }
             }
         }
 
@@ -155,7 +158,7 @@ namespace WebTimeTracker
                 double avgRating = GetAverageRating(pr_id, c.CriteriaId, user_net_id);
 
                 TableCell ratingsCell = new TableCell{
-                    Text = avgRating.ToString()
+                    Text = avgRating != -1 ? avgRating.ToString() : "Pending"
                 };
 
                 tableRatingsRow.Cells.Add(ratingsCell);
@@ -179,13 +182,14 @@ namespace WebTimeTracker
                 // Query DB to get the criteria for the current date
                 string criteria_query = "SELECT AVG(prr.rating) " +
                                         "FROM pr_ratings AS prr JOIN peer_review AS pr ON prr.pr_id = pr.pr_id " +
-                                        "WHERE prr.for_net_id = @user_net_id AND pr.pr_id = @pr_id";
+                                        "WHERE prr.for_net_id = @user_net_id AND pr.pr_id = @pr_id AND criteria_id = @criteria_id";
 
                 using (MySqlCommand rating_command = new MySqlCommand(criteria_query, connection))
                 {
                     // Set the parameters for the query
                     rating_command.Parameters.AddWithValue("@user_net_id", user_net_id);
                     rating_command.Parameters.AddWithValue("@pr_id", pr_id);
+                    rating_command.Parameters.AddWithValue("@criteria_id", criteria_id);
 
                     // Execute the query and get the peer review ID
                     object result = rating_command.ExecuteScalar();
