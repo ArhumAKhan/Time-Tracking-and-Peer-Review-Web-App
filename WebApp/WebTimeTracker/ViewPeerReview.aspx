@@ -31,7 +31,8 @@
             margin-top: 20px;
         }
         .container {
-            margin-left: 240px;
+            margin-top: 200px;
+            margin-left: 540px;
             padding: 20px;
             width: calc(100% - 240px);
         }
