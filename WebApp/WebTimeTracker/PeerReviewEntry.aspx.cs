@@ -69,6 +69,15 @@ namespace WebTimeTracker
 
             // Enable the submit button and its functionality
             EnableButton(criteria, teamMembers, user_net_ID, pr_id);
+
+            if(IsPostBack)
+            {
+                Button submitButton = FindControl("SubmitButton") as Button;
+                submitButton.Visible = false;
+
+                Table prTable = FindControl("ReviewTable") as Table;
+                prTable.Visible = false;
+            }
         }
 
         // Function to find the peer review for the current date
@@ -375,6 +384,8 @@ namespace WebTimeTracker
                     }
 
                     connection.Close();
+
+                    Response.Redirect("PeerReviewEntry.aspx");
                 }
             }
             else
