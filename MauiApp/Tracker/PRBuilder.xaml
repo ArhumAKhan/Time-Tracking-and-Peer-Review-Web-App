@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Tracker.PRBuilder">
+
+    <Border BackgroundColor="White"
+            HorizontalOptions="Center" VerticalOptions="Center" 
+            Width="600" Height="800">
+
+        <Grid Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <StackLayout VerticalOptions="Center">
+                <Label Text="Peer Review Name" Margin="20,0,0,0"/>
+                <Entry x:Name="PRNameEntry" WidthRequest="420" Margin="0,0,0,10" Placeholder="E.G. Mid-Semester Peer Review" TextColor="Black" />
+
+                <FlexLayout>
+                    <StackLayout Margin="10,0,0,0">
+                        <Label Text="Start Date"/>
+                        <DatePicker MinimumDate="01/01/2024"
+                                    MaximumDate="12/31/2025"
+                                    WidthRequest="200"
+                                    Margin="0,0,20,10"
+                                    x:Name="StartDateEntry"/>
+                    </StackLayout>
+
+                    <StackLayout>
+                        <Label Text="Clost Date"/>
+                        <DatePicker MinimumDate="01/01/2024"
+                                    MaximumDate="12/31/2025"
+                                    WidthRequest="200"
+                                    Margin="0,0,20,10"
+                                    x:Name="EndDateEntry"/>
+                    </StackLayout>
+                </FlexLayout>
+
+                <StackLayout x:Name="CriteriaStack" Grid.Row="1">
+                    <Label Text="Enter Criteria" Margin="20,0,0,0"/>
+                    <Entry x:Name="CriteriaEntry" WidthRequest="420" Margin="0,0,0,10" Placeholder="E.G. Attendance, Participation, etc." TextColor="Black" />
+                </StackLayout>
+
+                <FlexLayout>
+                    <Button Text="Add Another Criteria" x:Name="AddCriteriaBtn" Clicked="AddCriteria_Clicked" WidthRequest="200" Margin="10,0,10,0"/>
+                    <Button Text="Submit" x:Name="SubmitBtn" Clicked="Submit_Clicked" WidthRequest="200"/>
+                </FlexLayout>
+            </StackLayout>
+        </Grid>
+    </Border>
+</ContentPage>
