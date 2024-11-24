@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Tracker.RatingsEditor">
+    <Border BackgroundColor="White"
+        HorizontalOptions="Center" VerticalOptions="Center" 
+        Width="600" Height="800">
+
+        <Grid Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <StackLayout VerticalOptions="Center">
+                <Label Text="Enter Submitter Net ID" />
+                <Entry x:Name="SubmitterIdEntry" WidthRequest="420" Margin="0,0,0,10" TextColor="Black" />
+
+                <StackLayout x:Name="SubmissionsStack" Grid.Row="1">
+                </StackLayout>
+
+                <Button Text="Search" x:Name="SearchBtn" Clicked="SearchSubmit_Clicked" WidthRequest="420"/>
+            </StackLayout>
+        </Grid>
+    </Border>
+</ContentPage>

@@ -90,6 +90,9 @@
 	  <MauiXaml Update="PRBuilder.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
+	  <MauiXaml Update="RatingsEditor.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
 	  <MauiXaml Update="TimeLog.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
