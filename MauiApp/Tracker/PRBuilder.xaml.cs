@@ -13,24 +13,8 @@ namespace Tracker
         private void AddCriterion_Clicked(object sender, EventArgs e)
         {
             // Create a new Label and Entry for the criteria
-            var newLabel = new Label
-            {
-                Text = "Enter Criterion",
-                TextColor = Colors.Black,
-                Margin = new Thickness(20, 0, 0, 00)
-            };
-
-            var newEntry = new Entry
-            {
-                WidthRequest = 420,
-                Margin = new Thickness(0, 0, 0, 10),
-                Placeholder = "E.G. Attendance, Participation, etc.",
-                TextColor = Colors.Black
-            };
-
-            // Add the new Label and Entry to the StackLayout
-            CriteriaStack.Children.Add(newLabel);
-            CriteriaStack.Children.Add(newEntry);
+            CriteriaStack.Children.Add(new Label { Text = "Enter Criteria", TextColor = Colors.Black, Margin = new Thickness(20, 0, 0, 0) });
+            CriteriaStack.Children.Add(new Entry { WidthRequest = 420, Margin = new Thickness(0, 0, 0, 10), Placeholder = "E.G. Attendance, Participation, etc.", TextColor = Colors.Black });
         }
 
         private void RemoveCriterion_Clicked(object sender, EventArgs e)
@@ -47,7 +31,7 @@ namespace Tracker
             string startDate = StartDateEntry.Date.ToString("yyyy-MM-dd");
             string endDate = EndDateEntry.Date.ToString("yyyy-MM-dd");
 
-            List<string> criteria_list = new List<string>();
+            List<string> criteria_list = [];
 
             foreach (var child in CriteriaStack.Children)
             {
@@ -87,6 +71,17 @@ namespace Tracker
             }
 
             connection.Close();
+
+            DisplayAlert("Success", "Peer Review Created Successfully", "OK");
+
+            PRNameEntry.Text = string.Empty;
+            StartDateEntry.Date = DateTime.Now;
+            EndDateEntry.Date = DateTime.Now;
+            CriteriaEntry.Text = string.Empty;
+
+            CriteriaStack.Children.Clear();
+            CriteriaStack.Children.Add(new Label { Text = "Enter Criteria" });
+            CriteriaStack.Children.Add(new Entry { WidthRequest = 420, Margin = new Thickness(0, 0, 0, 10), Placeholder = "E.G. Attendance, Participation, etc.", TextColor = Colors.Black });
         }
     }
 }
