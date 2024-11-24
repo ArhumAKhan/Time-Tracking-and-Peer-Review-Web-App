@@ -32,7 +32,7 @@ namespace WebTracker
                 }
                 else
                 {
-                    // If utd_id is not found in session, redirect back to login page
+                    // If student_id is not found in session, redirect back to login page
                     Response.Redirect("Login.aspx");
                 }
 
