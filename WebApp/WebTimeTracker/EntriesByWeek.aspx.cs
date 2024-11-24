@@ -22,8 +22,8 @@ namespace WebTracker
     {
         private int totalHoursLogged = 0; // Store total hours
         private int totalMinutesLogged = 0; // Store total minutes
-        private string utdId; // User's UTD ID
-        private string courseId = "cs4485"; // Fixed course ID for entries
+        private string studentId; // User's UTD ID
+        private string courseId ; // courseid for CS4485 from session
 
         // ** Page Load Event **
         // This method runs when the page loads and handles displaying entries for the current, previous week,
@@ -32,14 +32,15 @@ namespace WebTracker
         {
             if (!IsPostBack)
             {
-                // Check if utd_id is stored in the session
-                if (Session["utd_id"] != null)
+                // Check if student_id  is stored in the session
+                if (Session["student_id"] != null)
                 {
-                    utdId = Session["utd_id"].ToString();
+                    studentId = Session["student_id"].ToString();
+                    courseId = Session["course_id"].ToString();
                 }
                 else
                 {
-                    // If utd_id is not found in session, redirect back to login page
+                    // If student_id is not found in session, redirect back to login page
                     Response.Redirect("Login.aspx");
                 }
 
@@ -110,12 +111,13 @@ namespace WebTracker
                     conn.Open();
 
                     // Query to retrieve all time entries for the user and specified course
-                    string query = @"SELECT log_id, utd_id, course_id, log_date, hours_logged, minutes_logged, work_desc 
+                    string query = @"SELECT log_date, minutes_logged DIV 60 hours_logged, 
+                                     minutes_logged % 60 minutes_logged, work_desc 
                                      FROM time_logs 
-                                     WHERE utd_id = @utdId AND course_id = @courseId ORDER BY log_date";
+                                     WHERE student_id = @studentId AND course_id = @courseId ORDER BY log_date";
 
                     MySqlCommand cmd = new MySqlCommand(query, conn);
-                    cmd.Parameters.AddWithValue("@utdId", utdId);
+                    cmd.Parameters.AddWithValue("@studentId", studentId);
                     cmd.Parameters.AddWithValue("@courseId", courseId);
 
                     MySqlDataAdapter da = new MySqlDataAdapter(cmd);
@@ -153,16 +155,17 @@ namespace WebTracker
                     conn.Open();
 
                     // SQL query to retrieve time entries for the specified date range
-                    string query = @"SELECT log_id, utd_id, course_id, log_date, hours_logged, minutes_logged, work_desc 
+                    string query = @"SELECT log_date, minutes_logged DIV 60 hours_logged, 
+                                     minutes_logged % 60 minutes_logged, work_desc 
                                      FROM time_logs
                                      WHERE log_date BETWEEN @startDate AND @endDate
-                                        AND utd_id = @utdId AND course_id = @courseId 
+                                        AND student_id = @studentId AND course_id = @courseId 
                                      ORDER BY log_date";
 
                     MySqlCommand cmd = new MySqlCommand(query, conn);
                     cmd.Parameters.AddWithValue("@startDate", startDate.ToString("yyyy-MM-dd"));
                     cmd.Parameters.AddWithValue("@endDate", endDate.ToString("yyyy-MM-dd"));
-                    cmd.Parameters.AddWithValue("@utdId", utdId);
+                    cmd.Parameters.AddWithValue("@studentId", studentId);
                     cmd.Parameters.AddWithValue("@courseId", courseId);
 
                     MySqlDataAdapter da = new MySqlDataAdapter(cmd);

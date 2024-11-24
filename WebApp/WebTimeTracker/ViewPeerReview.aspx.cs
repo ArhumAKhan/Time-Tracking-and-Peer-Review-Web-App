@@ -20,7 +20,7 @@ namespace WebTimeTracker
         {
             if (!IsPostBack) {
                 // Validate that the user is logged in
-                if (Session["utd_id"] == null || Session["net_id"] == null)
+                if (Session["student_id"] == null || Session["net_id"] == null)
                 {
                     Response.Redirect("Login.aspx");
                 }

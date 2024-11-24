@@ -89,7 +89,7 @@
     <div class="container">
         <h1>Time Entry</h1>
         <form id="timeEntryForm" runat="server">
-            <asp:TextBox ID="utdId" runat="server" Visible="false"></asp:TextBox>
+            <asp:TextBox ID="studentId" runat="server" Visible="false"></asp:TextBox>
 
             <label for="courseId">Course ID:</label>
             <asp:TextBox ID="courseId" runat="server" ReadOnly="true" Text="cs4485"></asp:TextBox>
