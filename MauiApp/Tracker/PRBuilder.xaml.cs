@@ -10,12 +10,12 @@ namespace Tracker
             InitializeComponent();
         }
 
-        private void AddCriteria_Clicked(object sender, EventArgs e)
+        private void AddCriterion_Clicked(object sender, EventArgs e)
         {
             // Create a new Label and Entry for the criteria
             var newLabel = new Label
             {
-                Text = "Enter Criteria",
+                Text = "Enter Criterion",
                 TextColor = Colors.Black,
                 Margin = new Thickness(20, 0, 0, 00)
             };
@@ -31,6 +31,15 @@ namespace Tracker
             // Add the new Label and Entry to the StackLayout
             CriteriaStack.Children.Add(newLabel);
             CriteriaStack.Children.Add(newEntry);
+        }
+
+        private void RemoveCriterion_Clicked(object sender, EventArgs e)
+        {
+            if (CriteriaStack.Children.Count > 2)
+            {
+                CriteriaStack.Children.RemoveAt(CriteriaStack.Children.Count - 1);
+                CriteriaStack.Children.RemoveAt(CriteriaStack.Children.Count - 1);
+            }
         }
 
         private void Submit_Clicked(object sender, EventArgs e)

@@ -39,12 +39,13 @@
                 </FlexLayout>
 
                 <StackLayout x:Name="CriteriaStack" Grid.Row="1">
-                    <Label Text="Enter Criteria" Margin="20,0,0,0"/>
+                    <Label Text="Enter Criterion" Margin="20,0,0,0"/>
                     <Entry x:Name="CriteriaEntry" WidthRequest="420" Margin="0,0,0,10" Placeholder="E.G. Attendance, Participation, etc." TextColor="Black" />
                 </StackLayout>
 
                 <FlexLayout>
-                    <Button Text="Add Another Criteria" x:Name="AddCriteriaBtn" Clicked="AddCriteria_Clicked" WidthRequest="200" Margin="10,0,10,0"/>
+                    <Button Text="+ Criterion" x:Name="AddCriterionBtn" Clicked="AddCriterion_Clicked" WidthRequest="100" Margin="10,0,0,0"/>
+                    <Button Text="- Criterion" x:Name="RemoveCriterionBtn" Clicked="RemoveCriterion_Clicked" WidthRequest="100" Margin="0,0,10,0"/>
                     <Button Text="Submit" x:Name="SubmitBtn" Clicked="Submit_Clicked" WidthRequest="200"/>
                 </FlexLayout>
             </StackLayout>
