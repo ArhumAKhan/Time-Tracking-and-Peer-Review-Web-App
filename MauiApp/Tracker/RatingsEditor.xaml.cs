@@ -31,23 +31,32 @@ namespace Tracker
 
             while (reader.Read())
             {
-                string pr_id = reader["for_net_id"].ToString();
-                string rating = reader["rating"].ToString();
-                string criteria = reader["criteria_desc"].ToString();
+                string pr_id = reader["for_net_id"]?.ToString() ?? string.Empty;
+                string rating = reader["rating"]?.ToString() ?? string.Empty;
+                string criteria = reader["criteria_desc"]?.ToString() ?? string.Empty;
+                int rating_id = int.Parse(reader["rating_id"]?.ToString() ?? string.Empty);
+                int criteria_id = int.Parse(reader["criteria_id"]?.ToString() ?? string.Empty);
 
-                FlexLayout layout = new FlexLayout();
-                layout.Add(new Label { Text = "PR ID: " + pr_id, TextColor = Colors.Black, Margin = new Thickness(0, 0, 0, 0) });
-                layout.Add(new Label { Text = "Criteria: " + criteria, TextColor = Colors.Black, Margin = new Thickness(0, 0, 0, 0) });
+                Entry ratingEntry = new () { Text = rating, WidthRequest = 50, Margin = new Thickness(0, 0, 0, 0) };
 
-                Entry ratingEntry = new Entry { Text = rating, WidthRequest = 50, Margin = new Thickness(0, 0, 0, 0) };
-                layout.Add(ratingEntry);
-
-                int rating_id = int.Parse(reader["rating_id"].ToString());
-                int criteria_id = int.Parse(reader["criteria_id"].ToString());
-
-                Button editRating = new Button { Text = "Edit Rating", Margin = new Thickness(0, 0, 0, 0) };
+                Button editRating = new() { Text = "Upadate Rating", Margin = new Thickness(0, 0, 0, 0) };
                 editRating.Clicked += (s, e) => EditRating(rating_id, criteria_id, int.Parse(ratingEntry.Text));
-                layout.Add(editRating);
+
+                Grid layout = new ()
+                {
+                    ColumnDefinitions =
+                    {
+                        new ColumnDefinition { Width = GridLength.Auto },
+                        new ColumnDefinition { Width = GridLength.Auto },
+                        new ColumnDefinition { Width = GridLength.Auto },
+                        new ColumnDefinition { Width = GridLength.Auto }
+                    }
+                };
+
+                layout.Add(new Label { Text = "Rating For: " + pr_id, TextColor = Colors.Black, Margin = new Thickness(0, 0, 0, 0) }, 0, 0);
+                layout.Add(new Label { Text = "Criteria: " + criteria, TextColor = Colors.Black, Margin = new Thickness(0, 0, 0, 0) }, 1, 0);
+                layout.Add(ratingEntry, 2, 0);
+                layout.Add(editRating, 3, 0);
 
                 SubmissionsStack.Children.Add(layout);
             }
