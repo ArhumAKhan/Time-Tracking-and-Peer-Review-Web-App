@@ -14,25 +14,43 @@ using System.Configuration;
 
 namespace WebTimeTracker
 {
+    // ******************************************************************************
+    // * Page for Submitting Peer Reviews for WebTracker Application
+    // *
+    // * Written by Farhat R. Kabir for CS 4485.
+    // * NetID: frk200000
+    // *
+    // * This page allows a logged-in user to submit peer reviews for their team members.
+    // * The page loads criteria for an open peer review (if available) and generates a
+    // * form for the user to rate each team member on each criterion.
+    // * 
+    // ******************************************************************************
     public partial class PeerReviewEntry : System.Web.UI.Page
     {
+        // ** DB Connection String **
+        // This string is used to connect to the MySQL database using the connection string from Web.config.
         private readonly string connectionString = ConfigurationManager.ConnectionStrings["MySqlConnectionString"].ConnectionString;
 
+        // ** Page Load Event **
+        // This method is called every time the page is loaded or refreshed.
+        // It validates user login, checks for an open peer review, and generates the peer review form.
+        // Once the form is built, it enables the submission functionality.
+        // On postback, it hides the form and submit button after submission.
         protected void Page_Load(object sender, EventArgs e)
         {
-            // Validate that the user is logged in
+            // Validate that the user is logged in.
             if (Session["utd_id"] == null || Session["net_id"] == null)
             {
                 Response.Redirect("Login.aspx");
             }
 
-            // Get the current date
+            // Get the current date.
             string currentDate = DateTime.Now.ToString("yyyy-MM-dd");
 
-            // Check to see if there are any peer reviews for the current date
+            // Check to see if there are any peer reviews for the current date.
             int pr_id = FindPeerReview(currentDate);
 
-            // If there are no peer reviews for the current date, peer review submission is not allowed
+            // If there are no peer reviews for the current date, peer review submission is not allowed.
             if (pr_id == -1)
             {
                 Literal messageLiteral = new Literal
@@ -44,9 +62,10 @@ namespace WebTimeTracker
                 return;
             }
 
+            // Get the user's net ID from the session.
             string user_net_ID = Session["net_id"].ToString();
 
-            // Check if the user has already made a submission for this peer review
+            // Check if the user has already made a submission for this peer review. If so, submission is not allowed.
             if (HasAlreadySubmitted(user_net_ID, pr_id))
             {
                 Literal messageLiteral = new Literal
@@ -69,7 +88,8 @@ namespace WebTimeTracker
 
             // Enable the submit button and its functionality
             EnableButton(criteria, teamMembers, user_net_ID, pr_id);
-
+    
+            // If the page is a postback (after submission), hide the form and submit button to prevent resubmission
             if(IsPostBack)
             {
                 Button submitButton = FindControl("SubmitButton") as Button;
@@ -80,7 +100,10 @@ namespace WebTimeTracker
             }
         }
 
-        // Function to find the peer review for the current date
+        // ** Method For Finding Open Peer Review **
+        // This method is called upon page load after user validation with the current date.
+        // It queries the database to find an open peer review that is accepting submissions for the current date.
+        // If an open peer review is found, it returns the peer review ID. Otherwise, it returns -1.
         private int FindPeerReview(string currentDate)
         {
             using (MySqlConnection connection = new MySqlConnection(connectionString))
@@ -111,7 +134,10 @@ namespace WebTimeTracker
             }
         }
 
-        // Function to check if the user has already made a submission for the current peer review
+        // ** Method For Checking Whether User Has Already Made A Submission **
+        // This method is called upon page load after an open peer review is found.
+        // It queries the database to find if the user has already made a submission for the current peer review.
+        // If a submission is found, it returns true. Otherwise, it returns false.
         private bool HasAlreadySubmitted(string user_net_ID, int pr_id)
         {
             using (MySqlConnection connection = new MySqlConnection(connectionString))
@@ -140,14 +166,16 @@ namespace WebTimeTracker
             }
         }
 
-        // Function to get the peer review criteria for the current date
+        // ** Method For Grabbing Criteria For Open Peer Review **
+        // This method is called upon page load after an open peer review is found and user submission is allowed.
+        // It queries the database and returns any criteria associated with the current peer review.
         private List<Criteria> GetCriteria(int pr_id)
         {
             using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
                 connection.Open();
 
-                // Query DB to get the criteria for the current date
+                // Query DB to get the criteria for the current peer review
                 string criteria_query = "SELECT criteria_id, criteria_desc " +
                                         "FROM pr_criteria " +
                                         "WHERE pr_id = @pr_id";
@@ -178,7 +206,9 @@ namespace WebTimeTracker
             }
         }
 
-        // Function to get the user's team members using their net ID
+        // ** Method For Grabbing Retrieving User's Team **
+        // This method is called after an open peer review is found and user submission is allowed.
+        // It queries the database and returns a list of the user's team members.
         private List<TeamMembers> GetTeam(string user_net_ID)
         {
             using (MySqlConnection connection = new MySqlConnection(connectionString))
@@ -221,7 +251,10 @@ namespace WebTimeTracker
             }
         }
 
-        // Function to build the table for the peer review form
+        // ** Method For Building Peer Review Form **
+        // This method is called near end of page load after an open peer review is found, user submission is allowed,
+        // and criteria and team members are retrieved. It generates a table with rows for each team member and columns
+        // for each criterion, with dropdown lists for the user to rate each team member on each criterion.
         private void BuildTable(List<Criteria> criteria, List<TeamMembers> teamMembers)
         {
             // Initialize the table
@@ -288,7 +321,10 @@ namespace WebTimeTracker
             ReviewTablePlaceholder.Controls.Add(table);
         }
 
-        // Function to enable the submit button for the peer review form and add functionality
+        // ** Method For Enabling Peer Review Submission **
+        // This method is called after the peer review form is built.
+        // It allocates all retrieved user and Peer Review data to the submission function and assigns it to the submit button.
+        // It also enables the submit button to be visible and clickable, with a confirmation dialog.
         private void EnableButton(List<Criteria> criteria, List<TeamMembers> teamMembers, string user_net_id, int pr_id)
         {
             Button submitButton = FindControl("SubmitButton") as Button;
@@ -297,7 +333,10 @@ namespace WebTimeTracker
             submitButton.Click += (s, args) => SubmitButton_Click(criteria, teamMembers, user_net_id, pr_id);
         }
 
-        // Submission button functionality to insert the peer review ratings into the database
+        // ** Submit Button Click Event **
+        // This method is called when the Submit button is clicked and the user confirms the submission.
+        // It retrieves the ratings from the form, inserts them into the database with their associated criteria and target,
+        // and registers the submission along with the ratings. If successful, it reloads the page.
         protected void SubmitButton_Click(List<Criteria> criteria, List<TeamMembers> teamMembers, string user_net_id, int pr_id)
         {
             // Get the table
@@ -306,20 +345,24 @@ namespace WebTimeTracker
             // Create a list to store the ratings
             var ratingData = new List<Rating>();
 
-            // For each member (row) in the table
+            // For each member (row) in the table\
+            // i = 1 to skip the header row
             for (int i = 1; i < reviewTable.Rows.Count; i++)
             {
                 TableRow row = reviewTable.Rows[i];
 
                 // Get the net ID of the corresponding member
+                // (i-1) is used to account for the header row
                 string for_id = teamMembers[i - 1].NetId;
 
                 // For each criteria (column) in the table
+                // j = 1 to skip the name column
                 for (int j = 1; j < row.Cells.Count; j++)
                 {
                     TableCell cell = row.Cells[j];
 
                     // Get the criteria ID
+                    // (j-1) is used to account for the name column
                     int criteria_id = criteria[j - 1].CriteriaId;
 
                     // Get the dropdown list
@@ -346,7 +389,6 @@ namespace WebTimeTracker
                 {
                     connection.Open();
 
-
                     // Register the submission in the pr_submissions table
                     string pr_submission_insert = "INSERT INTO pr_submissions (pr_id, submission_date, submitter_net_id) " +
                                                   "VALUES (@pr_id, @submission_date, @submitter_net_id)";
@@ -359,8 +401,8 @@ namespace WebTimeTracker
 
                     pr_submission_command.ExecuteNonQuery();
 
+                    // Get the submission ID
                     int submission_id = (int)pr_submission_command.LastInsertedId;
-                    System.Diagnostics.Debug.WriteLine("Last Inserted ID: " + submission_id);
 
                     // For each rating
                     foreach (Rating rating in ratingData)
@@ -383,8 +425,8 @@ namespace WebTimeTracker
                         }
                     }
 
+                    // Close the DB connection and reload the page
                     connection.Close();
-
                     Response.Redirect("PeerReviewEntry.aspx");
                 }
             }
