@@ -12,64 +12,68 @@ namespace Tracker
     // * Written by Nikhil Giridharan and Johnny An for CS 4485.
     // * NetID: nxg220038 and hxa210014
     // *
-    // * This page displays a list of classes for a specific professor and allows the
-    // * user to select a class to view attendance logs. The selected class is then passed
+    // * This page displays a list of courses for a specific professor and allows the
+    // * user to select a course to view attendance logs. The selected course is then passed
     // * to the TimeLog page for further details.
     // *
     // ******************************************************************************
-
     public partial class ClassList : ContentPage
     {
-        private int _utdId; // Professor's UTD ID
-        private string _selectedCourseId; // Selected course ID
+        private int _userId; // Professor's user ID
+        private Course _selectedCourse; // Selected course object
 
-        // ** Constructor **
-        // Initializes the ClassList page with the professor's UTD ID and loads the class list.
         public ClassList(int utdId)
         {
             InitializeComponent();
-            _utdId = utdId;
+            _userId = utdId;
             LoadClassList();
         }
 
-        // ** Load Class List **
-        // Connects to the database to retrieve a list of course IDs associated with the professor's UTD ID.
+        // ** Course Class **
+        // Represents a course with ID and Code.
+        public class Course
+        {
+            public string CourseId { get; set; }
+            public string CourseCode { get; set; }
+        }
+
         private void LoadClassList()
         {
             try
             {
-                var courseList = new List<string>();
+                var courseList = new List<Course>();
 
                 using (var connection = new MySqlConnection(DatabaseConfig.ConnectionString))
                 {
                     connection.Open();
-
                     // ** SQL Query to Retrieve Courses **
-                    // Retrieves course IDs for classes taught by the specified professor.
-                    string query = "SELECT course_id FROM courses WHERE professor_id = @utdId";
+                    // Retrieves course ID and codes for classes taught by the specified professor.
+                    string query = "SELECT course_id, course_code FROM courses c " +
+                                   "JOIN professors p ON c.professor_id = p.professor_id " +
+                                   "WHERE p.user_id = @userId";
 
                     using (var command = new MySqlCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@utdId", _utdId);
+                        command.Parameters.AddWithValue("@userId", _userId);
 
                         using (var reader = command.ExecuteReader())
                         {
-                            // Add each course ID to the course list
                             while (reader.Read())
                             {
-                                string courseId = reader.GetString("course_id");
-                                courseList.Add(courseId);
+                                courseList.Add(new Course
+                                {
+                                    CourseId = reader["course_id"].ToString(), // Convert Int32 to string
+                                    CourseCode = reader["course_code"].ToString()
+                                });
                             }
                         }
                     }
                 }
 
-                // Set the ItemsSource of the Picker to the list of course IDs
-                ClassPicker.ItemsSource = courseList;
+                ClassPicker.ItemsSource = courseList; // Bind list to Picker
             }
             catch (Exception ex)
             {
-                // ** Error Handling **
                 // Display an error message if class list fails to load.
                 DisplayAlert("Error", "Unable to load class list: " + ex.Message, "OK");
             }
@@ -81,14 +85,13 @@ namespace Tracker
         {
             if (ClassPicker.SelectedIndex != -1)
             {
-                // Store the selected course ID and enable the TimeLog button
-                _selectedCourseId = ClassPicker.SelectedItem.ToString();
+                // Get the selected course and enable the TimeLog button
+                _selectedCourse = (Course)ClassPicker.SelectedItem;
                 TimeLogButton.IsEnabled = true;
             }
             else
             {
-                // Clear the selected course ID and disable the TimeLog button if no class is selected
-                _selectedCourseId = null;
+                _selectedCourse = null;
                 TimeLogButton.IsEnabled = false;
             }
         }
@@ -97,15 +100,13 @@ namespace Tracker
         // Navigates to the TimeLog page with the selected course ID if a class is selected.
         private async void OnTimeLogButtonClicked(object sender, EventArgs e)
         {
-            if (!string.IsNullOrEmpty(_selectedCourseId))
+            if (_selectedCourse != null)
             {
-                // ** Navigation to TimeLog Page **
-                // Pass the selected course ID to the TimeLog page.
-                await Navigation.PushAsync(new TimeLog(_selectedCourseId));
+                // Pass the selected course ID to the TimeLog page
+                await Navigation.PushAsync(new TimeLog(_selectedCourse.CourseId));
             }
             else
             {
-                // Display an error if no class is selected before proceeding
                 await DisplayAlert("Error", "Please select a class before proceeding.", "OK");
             }
         }

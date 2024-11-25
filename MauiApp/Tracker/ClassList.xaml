@@ -3,7 +3,10 @@
              x:Class="Tracker.ClassList">
     <StackLayout Padding="20">
         <Label Text="Select a Class:" FontSize="Medium"/>
-        <Picker x:Name="ClassPicker" Title="Choose a class" SelectedIndexChanged="OnClassSelected"/>
+        <Picker x:Name="ClassPicker"
+                Title="Choose a class"
+                ItemDisplayBinding="{Binding CourseCode}"
+                SelectedIndexChanged="OnClassSelected"/>
 
         <!-- Add a BoxView to create space between the Picker and the Button -->
         <BoxView HeightRequest="20" Color="White" />

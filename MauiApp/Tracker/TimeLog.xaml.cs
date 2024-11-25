@@ -13,22 +13,22 @@ namespace Tracker
     // * Written by Nikhil Giridharan and Johnny An for CS 4485.
     // * NetID: nxg220038 and hxa210014
     // *
-    // * This page retrieves and displays time logs for a specific class in a table format.
+    // * This page retrieves and displays time logs for a specific course in a table format.
     // * Each row represents a student's attendance log with daily hours and cumulative hours.
     // *
     // ******************************************************************************
 
     public partial class TimeLog : ContentPage
     {
-        public string ClassName { get; private set; }
+        public string CourseId { get; private set; }
         private List<DateTime> DateHeaders { get; set; }
         private List<StudentAttendanceRecord> AttendanceRecords { get; set; }
 
         // ** Constructor **
         // Initializes the time log page with the specified class name and loads attendance data.
-        public TimeLog(string className)
+        public TimeLog(string courseId)
         {
-            ClassName = className;
+            CourseId = courseId;
             InitializeComponent();
             DateHeaders = new List<DateTime>();
             AttendanceRecords = new List<StudentAttendanceRecord>();
@@ -48,15 +48,18 @@ namespace Tracker
 
                     // ** SQL Query to Retrieve Attendance Data **
                     // Retrieves UTD ID, log date, hours logged, minutes logged, and student name for the specified class.
-                    string query = @"SELECT tl.utd_id, log_date, hours_logged, minutes_logged, CONCAT(first_name, ' ', last_name) AS student_name
+                    string query = @"SELECT us.utd_id, log_date, minutes_logged DIV 60 hours_logged, minutes_logged%60 minutes_logged, 
+                                     CONCAT(first_name, ' ', last_name) AS student_name
                                      FROM time_logs tl
-                                     JOIN users us ON tl.utd_id = us.utd_id
-                                     WHERE course_id = @courseId
+                                     JOIN course_enrollments ce ON ce.student_id = tl.student_id
+									 JOIN students st ON st.student_id = ce.student_id
+                                     JOIN users us ON us.user_id = st.user_id
+                                     WHERE ce.course_id = @courseId
                                      ORDER BY log_date";
 
                     using (MySqlCommand command = new MySqlCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@courseId", ClassName);
+                        command.Parameters.AddWithValue("@courseId", CourseId);
 
                         using (MySqlDataReader reader = command.ExecuteReader())
                         {

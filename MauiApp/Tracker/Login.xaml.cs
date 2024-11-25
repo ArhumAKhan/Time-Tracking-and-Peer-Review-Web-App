@@ -51,7 +51,7 @@ namespace Tracker
 
                     // ** SQL Query to Authenticate User **
                     // Query to verify NetID and password, specifically for user type 'P'
-                    string query = "SELECT utd_id FROM users WHERE net_id = @netId AND password = @password AND user_type = 'P'";
+                    string query = "SELECT user_id FROM users WHERE net_id = @netId AND password = @password AND user_role = 'Professor'";
 
                     using (var command = new MySqlCommand(query, connection))
                     {
@@ -66,11 +66,11 @@ namespace Tracker
                         if (result != null)
                         {
                             // User authenticated, retrieve utd_id
-                            int utdId = Convert.ToInt32(result);
+                            int userId = Convert.ToInt32(result);
 
                             // ** Navigation **
                             // Navigate to ClassListPage and pass the retrieved utd_id
-                            await Navigation.PushAsync(new ClassList(utdId));
+                            await Navigation.PushAsync(new ClassList(userId));
                         }
                         else
                         {
