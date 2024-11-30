@@ -50,7 +50,7 @@ namespace WebTimeTracker
             string currentDate = DateTime.Now.ToString("yyyy-MM-dd");
 
             // Check to see if there are any peer reviews for the current date.
-            int pr_id = FindPeerReview(currentDate);
+            int pr_id = FindPeerReview(courseId, currentDate);
 
             // If there are no peer reviews for the current date, peer review submission is not allowed.
             if (pr_id == -1)
@@ -88,10 +88,8 @@ namespace WebTimeTracker
             // Build the table for the peer review form using the criteria and team members
             BuildTable(criteria, teamMembers);
 
-            string user_net_ID = Session["net_id"].ToString();
-
             // Enable the submit button and its functionality
-            EnableButton(criteria, teamMembers, user_net_ID, pr_id);
+            EnableButton(criteria, teamMembers, studentId, pr_id);
     
             // If the page is a postback (after submission), hide the form and submit button to prevent resubmission
             if(IsPostBack)
@@ -108,7 +106,7 @@ namespace WebTimeTracker
         // This method is called upon page load after user validation with the current date.
         // It queries the database to find an open peer review that is accepting submissions for the current date.
         // If an open peer review is found, it returns the peer review ID. Otherwise, it returns -1.
-        private int FindPeerReview(string currentDate)
+        private int FindPeerReview(int courseId, string currentDate)
         {
             using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
@@ -117,12 +115,13 @@ namespace WebTimeTracker
                 // Query DB to find the peer review accepting submissions for the current date
                 string pr_query = "SELECT pr_id " +
                                   "FROM peer_review " +
-                                  "WHERE @review_date BETWEEN start_date AND end_date";
+                                  "WHERE course_id = @course_id AND @review_date BETWEEN start_date AND end_date";
 
                 MySqlCommand pr_command = new MySqlCommand(pr_query, connection);
 
                 // Set the parameter for the query
                 pr_command.Parameters.AddWithValue("@review_date", currentDate);
+                pr_command.Parameters.AddWithValue("@course_id", courseId);
 
                 // Execute the query and get the peer review ID
                 object result = pr_command.ExecuteScalar();
@@ -220,7 +219,7 @@ namespace WebTimeTracker
                 connection.Open();
 
                 // Query DB to get the user's team members
-                string query = "SELECT u.first_name, u.last_name, u.net_id " +
+                string query = "SELECT u.first_name, u.last_name, stu.student_id " +
                                 "FROM users AS u JOIN students AS stu ON u.user_id = stu.user_id, " +
                                 "team_members as tm " +
                                 "WHERE tm.student_id = stu.student_id AND tm.team_number = (" +
@@ -242,9 +241,9 @@ namespace WebTimeTracker
                         while (reader.Read())
                         {
                             string name = reader["last_name"].ToString() + ", " + reader["first_name"].ToString();
-                            string netId = reader["net_id"].ToString();
+                            int memberStudentId = int.Parse(reader["student_id"].ToString());
 
-                            teamMembers.Add(new TeamMembers { Name = name, NetId = netId });
+                            teamMembers.Add(new TeamMembers { Name = name, StudentId = memberStudentId });
                         }
 
                         // Close DB connection and return the list of team members
@@ -329,19 +328,19 @@ namespace WebTimeTracker
         // This method is called after the peer review form is built.
         // It allocates all retrieved user and Peer Review data to the submission function and assigns it to the submit button.
         // It also enables the submit button to be visible and clickable, with a confirmation dialog.
-        private void EnableButton(List<Criteria> criteria, List<TeamMembers> teamMembers, string user_net_id, int pr_id)
+        private void EnableButton(List<Criteria> criteria, List<TeamMembers> teamMembers, int studentId, int pr_id)
         {
             Button submitButton = FindControl("SubmitButton") as Button;
             submitButton.Visible = true;
             submitButton.OnClientClick = "return confirm('Are you sure you want to submit your peer review?');";
-            submitButton.Click += (s, args) => SubmitButton_Click(criteria, teamMembers, user_net_id, pr_id);
+            submitButton.Click += (s, args) => SubmitButton_Click(criteria, teamMembers, studentId, pr_id);
         }
 
         // ** Submit Button Click Event **
         // This method is called when the Submit button is clicked and the user confirms the submission.
         // It retrieves the ratings from the form, inserts them into the database with their associated criteria and target,
         // and registers the submission along with the ratings. If successful, it reloads the page.
-        protected void SubmitButton_Click(List<Criteria> criteria, List<TeamMembers> teamMembers, string user_net_id, int pr_id)
+        protected void SubmitButton_Click(List<Criteria> criteria, List<TeamMembers> teamMembers, int studentId, int pr_id)
         {
             // Get the table
             Table reviewTable = ReviewTablePlaceholder.FindControl("ReviewTable") as Table;
@@ -357,7 +356,7 @@ namespace WebTimeTracker
 
                 // Get the net ID of the corresponding member
                 // (i-1) is used to account for the header row
-                string for_id = teamMembers[i - 1].NetId;
+                int for_id = teamMembers[i - 1].StudentId;
 
                 // For each criteria (column) in the table
                 // j = 1 to skip the name column
@@ -376,8 +375,8 @@ namespace WebTimeTracker
                     Rating rating = new Rating
                     {
                         Criteria_id = criteria_id,
-                        For_net_id = for_id,
-                        From_net_id = user_net_id,
+                        ForStudentId = for_id,
+                        FromStudentId = studentId,
                         RatingValue = int.Parse(ddl.SelectedValue)
                     };
 
@@ -394,14 +393,14 @@ namespace WebTimeTracker
                     connection.Open();
 
                     // Register the submission in the pr_submissions table
-                    string pr_submission_insert = "INSERT INTO pr_submissions (pr_id, submission_date, submitter_net_id) " +
-                                                  "VALUES (@pr_id, @submission_date, @submitter_net_id)";
+                    string pr_submission_insert = "INSERT INTO pr_submissions (pr_id, submission_date, submitter_id) " +
+                                                  "VALUES (@pr_id, @submission_date, @submitter_id)";
 
                     MySqlCommand pr_submission_command = new MySqlCommand(pr_submission_insert, connection);
 
                     pr_submission_command.Parameters.AddWithValue("@pr_id", pr_id);
                     pr_submission_command.Parameters.AddWithValue("@submission_date", DateTime.Now.ToString("yyyy-MM-dd"));
-                    pr_submission_command.Parameters.AddWithValue("@submitter_net_id", user_net_id);
+                    pr_submission_command.Parameters.AddWithValue("@submitter_id", studentId);
 
                     pr_submission_command.ExecuteNonQuery();
 
@@ -412,8 +411,8 @@ namespace WebTimeTracker
                     foreach (Rating rating in ratingData)
                     {
                         // Insert the rating into DB while linking it to the submission
-                        string query = "INSERT INTO pr_ratings (submission_id, pr_id, criteria_id, from_net_id, for_net_id, rating) " +
-                                       "VALUES (@submission_id, @pr_id, @criteria_id, @from_net_id, @for_net_id, @rating)";
+                        string query = "INSERT INTO pr_ratings (submission_id, pr_id, criteria_id, from_student_id, for_student_id, rating) " +
+                                       "VALUES (@submission_id, @pr_id, @criteria_id, @from_student_id, @for_student_id, @rating)";
 
                         using (MySqlCommand command = new MySqlCommand(query, connection))
                         {
@@ -421,8 +420,8 @@ namespace WebTimeTracker
                             command.Parameters.AddWithValue("@submission_id", submission_id);
                             command.Parameters.AddWithValue("@pr_id", pr_id);
                             command.Parameters.AddWithValue("@criteria_id", rating.Criteria_id);
-                            command.Parameters.AddWithValue("@from_net_id", rating.From_net_id);
-                            command.Parameters.AddWithValue("@for_net_id", rating.For_net_id);
+                            command.Parameters.AddWithValue("@from_student_id", rating.FromStudentId);
+                            command.Parameters.AddWithValue("@for_student_id", rating.ForStudentId);
                             command.Parameters.AddWithValue("@rating", rating.RatingValue);
 
                             command.ExecuteNonQuery();
@@ -447,7 +446,7 @@ namespace WebTimeTracker
         public class TeamMembers
         {
             public string Name { get; set; }
-            public string NetId { get; set; }
+            public int StudentId { get; set; }
         }
 
         // Class for storing criteria data
@@ -461,8 +460,8 @@ namespace WebTimeTracker
         public class Rating
         {
             public int Criteria_id { get; set; }
-            public string For_net_id { get; set; }
-            public string From_net_id { get; set; }
+            public int ForStudentId { get; set; }
+            public int FromStudentId { get; set; }
             public int RatingValue { get; set; }
         }
     }
