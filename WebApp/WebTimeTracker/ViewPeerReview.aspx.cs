@@ -35,19 +35,18 @@ namespace WebTimeTracker
         {
             if (!IsPostBack) {
                 // Validate that the user is logged in.
-                if (Session["student_id"] == null || Session["net_id"] == null)
+                if (Session["student_id"] == null || Session["net_id"] == null || Session["course_id"] == null)
                 {
                     Response.Redirect("Login.aspx");
                 }
 
+                int courseId = int.Parse(Session["course_id"].ToString());
+
                 // Get the current date.
                 string currentDate = DateTime.Now.ToString("yyyy-MM-dd");
 
-                // Get the user's net ID from the session.
-                string user_net_ID = Session["net_id"].ToString();
-
                 // Find closed PRs.
-                List<int> pr_ids = FindPeerReview(currentDate);
+                List<int> pr_ids = FindPeerReview(courseId, currentDate);
 
                 // Retrieve average ratings per criteria for each PR.
                 for (int i = 0; i < pr_ids.Count; i++)
@@ -57,8 +56,10 @@ namespace WebTimeTracker
                     // Find criteria for PR.
                     List<Criteria> criteria = GetCriteria(pr_id);
 
+                    int studentId = int.Parse(Session["student_id"].ToString());
+
                     // Build average ratings table.
-                    BuildTable(criteria, pr_id, user_net_ID);
+                    BuildTable(criteria, pr_id, studentId);
                 }
             }
         }
@@ -66,7 +67,7 @@ namespace WebTimeTracker
         // ** Method For Finding Closed Peer Reviews **
         // This method is called upon page load after user validation with the current date.
         // It queries the database to find closed PRs, and returns their ids.
-        private List<int> FindPeerReview(string currentDate)
+        private List<int> FindPeerReview(int courseId, string currentDate)
         {
             using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
@@ -75,11 +76,12 @@ namespace WebTimeTracker
                 // Query DB to find the peer review accepting submissions for the current date
                 string pr_query = "SELECT pr_id " +
                                   "FROM peer_review " +
-                                  "WHERE end_date < @currentDate";
+                                  "WHERE course_id = @course_id AND end_date < @currentDate";
 
                 using (MySqlCommand command = new MySqlCommand(pr_query, connection))
                 {
                     // Set the parameters for the query
+                    command.Parameters.AddWithValue("@course_id", courseId);
                     command.Parameters.AddWithValue("@currentDate", currentDate);
 
                     using (MySqlDataReader reader = command.ExecuteReader())
@@ -145,7 +147,7 @@ namespace WebTimeTracker
         // ** Method For Building Average Ratings Table **
         // This method is called with information for a PR.
         // It uses given data to query the database and list average rating per criteria for a PR
-        private void BuildTable(List<Criteria> criteria, int pr_id, string user_net_id)
+        private void BuildTable(List<Criteria> criteria, int pr_id, int student_id)
         {
             // Initialize the table
             Table table = new Table
@@ -183,7 +185,7 @@ namespace WebTimeTracker
                 headerRow.Cells.Add(headerCell);
 
                 // Find average rating for the crieteria. -1 if no rating found.
-                double avgRating = GetAverageRating(pr_id, c.CriteriaId, user_net_id);
+                double avgRating = GetAverageRating(pr_id, c.CriteriaId, student_id);
 
                 // Display average rating, or "Pending" if not found.
                 TableCell ratingsCell = new TableCell{
@@ -203,7 +205,7 @@ namespace WebTimeTracker
         // ** Method For Getting Average Rating For Criteria **
         // This method is called with information for a PR.
         // Queries database for average rating a user recieved for a criteria
-        private double GetAverageRating(int pr_id, int criteria_id, string user_net_id)
+        private double GetAverageRating(int pr_id, int criteria_id, int student_id)
         {
             using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
@@ -212,12 +214,12 @@ namespace WebTimeTracker
                 // Query DB to get the criteria for the current date
                 string criteria_query = "SELECT AVG(prr.rating) " +
                                         "FROM pr_ratings AS prr JOIN peer_review AS pr ON prr.pr_id = pr.pr_id " +
-                                        "WHERE prr.for_net_id = @user_net_id AND pr.pr_id = @pr_id AND criteria_id = @criteria_id";
+                                        "WHERE prr.for_student_id = @student_id AND pr.pr_id = @pr_id AND criteria_id = @criteria_id";
 
                 using (MySqlCommand rating_command = new MySqlCommand(criteria_query, connection))
                 {
                     // Set the parameters for the query
-                    rating_command.Parameters.AddWithValue("@user_net_id", user_net_id);
+                    rating_command.Parameters.AddWithValue("@student_id", student_id);
                     rating_command.Parameters.AddWithValue("@pr_id", pr_id);
                     rating_command.Parameters.AddWithValue("@criteria_id", criteria_id);
 
