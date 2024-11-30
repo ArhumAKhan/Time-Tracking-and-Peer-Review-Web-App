@@ -67,14 +67,14 @@ namespace Tracker
                 }
             }
 
-            using var connection = new MySqlConnection(DatabaseConfig.ConnectionString);
+            using MySqlConnection connection = new (DatabaseConfig.ConnectionString);
 
             connection.Open();
 
             // Insert Peer Review into the database
             string pr_insert = "INSERT INTO peer_review (start_date, end_date) VALUES (@startDate, @endDate);";
 
-            using var command = new MySqlCommand(pr_insert, connection);
+            using MySqlCommand command = new (pr_insert, connection);
             
             command.Parameters.AddWithValue("@startDate", startDate);
             command.Parameters.AddWithValue("@endDate", endDate);
@@ -89,7 +89,7 @@ namespace Tracker
             {
                 string criteria_insert = "INSERT INTO pr_criteria (pr_id, criteria_desc) VALUES (@pr_id, @criteria);";
 
-                using var criteria_command = new MySqlCommand(criteria_insert, connection);
+                using MySqlCommand criteria_command = new (criteria_insert, connection);
 
                 criteria_command.Parameters.AddWithValue("@pr_id", pr_id);
                 criteria_command.Parameters.AddWithValue("@criteria", criteria);
