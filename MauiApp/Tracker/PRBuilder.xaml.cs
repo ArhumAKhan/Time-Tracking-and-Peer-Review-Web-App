@@ -17,11 +17,15 @@ namespace Tracker
 
     public partial class PRBuilder : ContentPage
     {
+        // Id of logged in user
+        private readonly int userId;
+
         // ** Constructor **
         // Initializes the login page and its components.
-        public PRBuilder()
+        public PRBuilder(int userId)
         {
             InitializeComponent();
+            this.userId = userId;
         }
 
         // ** Add Criterion Clicked Event **
@@ -55,6 +59,7 @@ namespace Tracker
         {
             string startDate = StartDateEntry.Date.ToString("yyyy-MM-dd");
             string endDate = EndDateEntry.Date.ToString("yyyy-MM-dd");
+            string prName = PRNameEntry.Text;
 
             List<string> criteria_list = [];
 
@@ -71,13 +76,27 @@ namespace Tracker
 
             connection.Open();
 
+            string pr_course = "SELECT c.course_id FROM courses AS c, users AS u JOIN professors AS p ON u.user_id = p.user_id " + 
+                               "WHERE p.user_id = @user_id AND c.professor_id = p.professor_id";
+
+            using MySqlCommand course_command = new(pr_course, connection);
+
+            course_command.Parameters.AddWithValue("@user_id", userId);
+
+            int courseId = (int)course_command.ExecuteScalar();
+
+            System.Diagnostics.Debug.WriteLine("Course ID: " + courseId);
+
             // Insert Peer Review into the database
-            string pr_insert = "INSERT INTO peer_review (start_date, end_date) VALUES (@startDate, @endDate);";
+            string pr_insert = "INSERT INTO peer_review (start_date, end_date, course_id, pr_name) " +
+                               "VALUES (@startDate, @endDate, @course_id, @pr_name);";
 
             using MySqlCommand command = new (pr_insert, connection);
             
             command.Parameters.AddWithValue("@startDate", startDate);
             command.Parameters.AddWithValue("@endDate", endDate);
+            command.Parameters.AddWithValue("@course_id", courseId);
+            command.Parameters.AddWithValue("@pr_name", prName);
 
             command.ExecuteNonQuery();
 
