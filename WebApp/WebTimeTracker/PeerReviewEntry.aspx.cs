@@ -39,10 +39,12 @@ namespace WebTimeTracker
         protected void Page_Load(object sender, EventArgs e)
         {
             // Validate that the user is logged in.
-            if (Session["utd_id"] == null || Session["net_id"] == null)
+            if (Session["student_id"] == null || Session["net_id"] == null || Session["course_id"] == null)
             {
                 Response.Redirect("Login.aspx");
             }
+
+            int courseId = int.Parse(Session["course_id"].ToString());
 
             // Get the current date.
             string currentDate = DateTime.Now.ToString("yyyy-MM-dd");
@@ -63,10 +65,10 @@ namespace WebTimeTracker
             }
 
             // Get the user's net ID from the session.
-            string user_net_ID = Session["net_id"].ToString();
+            int studentId = int.Parse(Session["student_id"].ToString());
 
             // Check if the user has already made a submission for this peer review. If so, submission is not allowed.
-            if (HasAlreadySubmitted(user_net_ID, pr_id))
+            if (HasAlreadySubmitted(studentId, pr_id))
             {
                 Literal messageLiteral = new Literal
                 {
@@ -81,10 +83,12 @@ namespace WebTimeTracker
             List<Criteria> criteria = GetCriteria(pr_id);
 
             // Get the user's team using their net ID
-            List<TeamMembers> teamMembers = GetTeam(user_net_ID);
+            List<TeamMembers> teamMembers = GetTeam(studentId);
 
             // Build the table for the peer review form using the criteria and team members
             BuildTable(criteria, teamMembers);
+
+            string user_net_ID = Session["net_id"].ToString();
 
             // Enable the submit button and its functionality
             EnableButton(criteria, teamMembers, user_net_ID, pr_id);
@@ -138,7 +142,7 @@ namespace WebTimeTracker
         // This method is called upon page load after an open peer review is found.
         // It queries the database to find if the user has already made a submission for the current peer review.
         // If a submission is found, it returns true. Otherwise, it returns false.
-        private bool HasAlreadySubmitted(string user_net_ID, int pr_id)
+        private bool HasAlreadySubmitted(int studentId, int pr_id)
         {
             using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
@@ -146,13 +150,13 @@ namespace WebTimeTracker
 
                 // Query DB to check if a peer review submission from the user already exists
                 string query = "SELECT * FROM pr_submissions " +
-                               "WHERE submitter_net_id = @submitter_net_id AND pr_id = @pr_id";
+                               "WHERE submitter_id = @submitter_id AND pr_id = @pr_id";
 
 
                 MySqlCommand pr_submission_command = new MySqlCommand(query, connection);
 
                 // Set the parameters for the query
-                pr_submission_command.Parameters.AddWithValue("@submitter_net_id", user_net_ID);
+                pr_submission_command.Parameters.AddWithValue("@submitter_id", studentId);
                 pr_submission_command.Parameters.AddWithValue("@pr_id", pr_id);
 
                 // Execute the query and check if a submission exists
@@ -209,7 +213,7 @@ namespace WebTimeTracker
         // ** Method For Grabbing Retrieving User's Team **
         // This method is called after an open peer review is found and user submission is allowed.
         // It queries the database and returns a list of the user's team members.
-        private List<TeamMembers> GetTeam(string user_net_ID)
+        private List<TeamMembers> GetTeam(int studentId)
         {
             using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
@@ -217,18 +221,18 @@ namespace WebTimeTracker
 
                 // Query DB to get the user's team members
                 string query = "SELECT u.first_name, u.last_name, u.net_id " +
-                                "FROM users u " +
-                                "JOIN team_members tm ON u.net_id = tm.member_net_id " +
-                                "WHERE tm.team_number = (" +
+                                "FROM users AS u JOIN students AS stu ON u.user_id = stu.user_id, " +
+                                "team_members as tm " +
+                                "WHERE tm.student_id = stu.student_id AND tm.team_number = (" +
                                 "SELECT team_number " +
                                 "FROM team_members " +
-                                "WHERE member_net_id = @user_net_ID" +
+                                "WHERE student_id = @student_id" +
                                 ")";
 
                 using (MySqlCommand command = new MySqlCommand(query, connection))
                 {
                     // Set the parameter for the query
-                    command.Parameters.AddWithValue("@user_net_ID", user_net_ID);
+                    command.Parameters.AddWithValue("@student_id", studentId);
 
                     using (MySqlDataReader reader = command.ExecuteReader())
                     {
