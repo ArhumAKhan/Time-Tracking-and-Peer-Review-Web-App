@@ -16,11 +16,14 @@ namespace Tracker
 
     public partial class RatingsEditor : ContentPage
     {
+        private readonly int userId;
+
         // ** Constructor **
         // Initializes the login page and its components.
-        public RatingsEditor()
+        public RatingsEditor(int user_id)
         {
             InitializeComponent();
+            this.userId = user_id;
         }
 
         // ** Search Button Clicked Event **
@@ -41,20 +44,28 @@ namespace Tracker
             connection.Open();
 
             // SQL for querying all ratings submitted by the user and the associated criteria
-            string search_query = "SELECT prr.rating_id, prr.criteria_id, prr.for_net_id, prr.rating, prc.criteria_desc " +
+            string search_query = "SELECT prr.rating_id, prr.criteria_id, prr.for_student_id, prr.rating, prc.criteria_desc " +
                                   "FROM pr_ratings AS prr JOIN pr_criteria AS prc ON prr.criteria_id = prc.criteria_id " +
-                                  "WHERE from_net_id = @search_id;";
+                                  "JOIN peer_review AS pr ON prr.pr_id = pr.pr_id " +
+                                  "WHERE prr.from_student_id = (" +
+                                  "SELECT student_id FROM students AS stu JOIN users AS u ON stu.user_id = u.user_id " +
+                                  "WHERE u.net_id = @search_id) " +
+                                  "AND pr.course_id = (" +
+                                  "SELECT c.course_id " + 
+                                  "FROM courses AS c, users AS u JOIN professors AS prf ON u.user_id = prf.user_id " +
+                                  "WHERE u.user_id = @user_id AND c.professor_id = prf.professor_id)";
 
             using MySqlCommand command = new (search_query, connection);
 
             command.Parameters.AddWithValue("@search_id", search_id);
+            command.Parameters.AddWithValue("@user_id", userId);
 
             using MySqlDataReader reader = command.ExecuteReader();
 
             // For each rating, display the criteria, rating value, and an option to update the rating
             while (reader.Read())
             {
-                string pr_id = reader["for_net_id"]?.ToString() ?? string.Empty;
+                string pr_id = reader["for_student_id"]?.ToString() ?? string.Empty;
                 string rating = reader["rating"]?.ToString() ?? string.Empty;
                 string criteria = reader["criteria_desc"]?.ToString() ?? string.Empty;
                 int rating_id = int.Parse(reader["rating_id"]?.ToString() ?? string.Empty);
