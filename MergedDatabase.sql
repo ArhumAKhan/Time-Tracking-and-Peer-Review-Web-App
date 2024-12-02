@@ -1,3 +1,52 @@
+/******************************************************************************
+ * Student Management Database Operations.
+ *
+ * This SQL file contains the essential queries for managing student records
+ * in a MySQL database. The queries are designed to support three main
+ * functionalities for the Student Management System:
+ *
+ * 1. **Add a new student**: This query inserts a new student record into
+ *    the `users` table with the provided details: UTD ID, Net ID, first name,
+ *    last name, and a default password ('default123'). The user role is set
+ *    to 'Student' by default.
+ *
+ * 2. **Update student information**: These queries allow for updating a student's
+ *    last name and/or first name based on their UTD ID. The queries dynamically
+ *    include fields that need to be updated.
+ *
+ * 3. **Delete a student**: This query deletes a student from the `users` table
+ *    using the UTD ID to identify the student.
+ *
+ * **Database Schema**:
+ * This SQL file assumes the existence of a `users` table with the following structure:
+ * - `utd_id` (Primary Key, VARCHAR): The unique identifier for the student.
+ * - `net_id` (VARCHAR): The student's Net ID.
+ * - `password` (VARCHAR): The student's password (default is 'default123').
+ * - `last_name` (VARCHAR): The student's last name.
+ * - `first_name` (VARCHAR): The student's first name.
+ * - `user_role` (VARCHAR): The role of the user (default is 'Student').
+ *
+ * **Queries**:
+ * - `INSERT INTO`: Adds a new student to the database.
+ * - `UPDATE`: Updates an existing student's details (last name, first name).
+ * - `DELETE`: Removes a student from the database.
+ *
+ * **Program Flow**:
+ * The queries are executed based on user input in the Student Management Program,
+ * which interacts with this database. The program allows users to:
+ * - Add students to the database with the provided details.
+ * - Update student records by modifying the last name and/or first name.
+ * - Delete student records by removing entries based on UTD ID.
+ *
+ * **Error Handling**:
+ * If any query fails due to issues such as a missing UTD ID or incorrect input,
+ * appropriate error messages will be generated and displayed to the user by the program.
+ *
+ * Written by Tahoor Khalid (txk210035) and Arhum Khan (axk210013) for Computer Science Project (CS4485),
+ * starting November 26, 2024.
+ *****************************************************************************/
+
+
 -- Users Table as a Central Connection Table
 CREATE TABLE users (
     user_id INT PRIMARY KEY AUTO_INCREMENT,
