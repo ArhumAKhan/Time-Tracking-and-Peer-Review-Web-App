@@ -7,129 +7,145 @@ using Microsoft.Maui.Controls;
 
 namespace Tracker
 {
-    // ******************************************************************************
-    // * Time Log Page for Tracker Application
-    // *
-    // * Written by Nikhil Giridharan and Johnny An for CS 4485.
-    // * NetID: nxg220038 and hxa210014
-    // *
-    // * This page retrieves and displays time logs for a specific course in a table format.
-    // * Each row represents a student's attendance log with daily hours and cumulative hours.
-    // *
-    // ******************************************************************************
-
     public partial class TimeLog : ContentPage
     {
-        public string CourseId { get; private set; }
+        public string ClassName { get; private set; }
         private List<DateTime> DateHeaders { get; set; }
         private List<StudentAttendanceRecord> AttendanceRecords { get; set; }
+        private Dictionary<(int row, int column), Entry> entryDictionary;
+        private bool isEditing = false;
+    
 
-        // ** Constructor **
-        // Initializes the time log page with the specified class name and loads attendance data.
-        public TimeLog(string courseId)
+
+       public TimeLog(string className)
         {
-            CourseId = courseId;
+            ClassName = className;
             InitializeComponent();
             DateHeaders = new List<DateTime>();
             AttendanceRecords = new List<StudentAttendanceRecord>();
+            entryDictionary = new Dictionary<(int row, int column), Entry>();
             LoadAttendanceLog();
-        }
 
-        // ** Load Attendance Log **
-        // Connects to the database and retrieves attendance records for each student in the class.
-        // Records are organized by date and displayed in a grid format with cumulative hours.
+            // Add the Edit button to the toolbar
+            var editToolbarItem = new ToolbarItem
+            {
+                Text = "Edit",
+                Order = ToolbarItemOrder.Primary,
+                Priority = 0
+            };
+            editToolbarItem.Clicked += OnEditButtonClicked;
+            ToolbarItems.Add(editToolbarItem);
+
+            // Add the Add Student button to the toolbar
+            var addStudentToolbarItem = new ToolbarItem
+            {
+                Text = "Add Student",
+                Order = ToolbarItemOrder.Primary,
+                Priority = 1
+            };
+            addStudentToolbarItem.Clicked += OnAddStudentButtonClicked;
+            ToolbarItems.Add(addStudentToolbarItem);
+
+            // Add the Add date button to the toolbar
+            var addDateToolbarItem = new ToolbarItem
+            {
+                Text = "Add Date",
+                Order = ToolbarItemOrder.Primary,
+                Priority = 1
+            };
+            addDateToolbarItem.Clicked += OnAddDateButtonClicked;
+            ToolbarItems.Add(addDateToolbarItem);
+        }
+        
+        
         private void LoadAttendanceLog()
         {
+            AttendanceRecords.Clear(); // Clear existing records to avoid duplication
+            DateHeaders.Clear(); // Clear existing headers to avoid duplication
+
             using (var connection = new MySqlConnection(DatabaseConfig.ConnectionString))
             {
                 try
                 {
                     connection.Open();
 
-                    // ** SQL Query to Retrieve Attendance Data **
-                    // Retrieves UTD ID, log date, hours logged, minutes logged, and student name for the specified class.
-                    string query = @"SELECT us.utd_id, log_date, minutes_logged DIV 60 hours_logged, minutes_logged%60 minutes_logged, 
-                                     CONCAT(first_name, ' ', last_name) AS student_name
-                                     FROM time_logs tl
-                                     JOIN course_enrollments ce ON ce.student_id = tl.student_id
-									 JOIN students st ON st.student_id = ce.student_id
-                                     JOIN users us ON us.user_id = st.user_id
-                                     WHERE ce.course_id = @courseId
-                                     ORDER BY log_date";
+                    string query = @"
+                        SELECT tl.student_id, tl.log_date, tl.minutes_logged, CONCAT(us.first_name, ' ', us.last_name) AS student_name
+                        FROM time_logs tl
+                        JOIN students st ON tl.student_id = st.student_id
+                        JOIN users us ON st.user_id = us.user_id
+                        WHERE tl.course_id = @courseId
+                        ORDER BY tl.log_date";
 
                     using (MySqlCommand command = new MySqlCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@courseId", CourseId);
+                        command.Parameters.AddWithValue("@courseId", ClassName);
 
                         using (MySqlDataReader reader = command.ExecuteReader())
                         {
                             var attendanceData = new Dictionary<int, (string studentName, List<DailyLog> logs)>();
                             var uniqueDates = new HashSet<DateTime>();
 
-                            // ** Process Data Rows **
-                            // Read each row and organize data by student, tracking unique dates for the header.
                             while (reader.Read())
                             {
-                                int utdId = reader.GetInt32("utd_id");
+                                int studentId = reader.GetInt32("student_id");
                                 DateTime logDate = reader.GetDateTime("log_date");
-                                int hoursLogged = reader.GetInt32("hours_logged");
                                 int minutesLogged = reader.GetInt32("minutes_logged");
                                 string studentName = reader.GetString("student_name");
 
+                                // If minutes_logged is zero, delete this record from the database
+                                if (minutesLogged == 0)
+                                {
+                                    DeleteZeroMinuteEntry(studentId, logDate);
+                                    continue; // Skip processing this record
+                                }
+
+                                // Track unique dates for the header
                                 uniqueDates.Add(logDate);
 
-                                if (!attendanceData.ContainsKey(utdId))
+                                // Add the log to the corresponding student's list
+                                if (!attendanceData.ContainsKey(studentId))
                                 {
-                                    attendanceData[utdId] = (studentName, new List<DailyLog>());
+                                    attendanceData[studentId] = (studentName, new List<DailyLog>());
                                 }
-                                attendanceData[utdId].logs.Add(new DailyLog { Date = logDate, Hours = hoursLogged, Minutes = minutesLogged });
+
+                                attendanceData[studentId].logs.Add(new DailyLog
+                                {
+                                    Date = logDate,
+                                    Hours = minutesLogged / 60,
+                                    Minutes = minutesLogged % 60
+                                });
                             }
 
-                            // Sort unique dates and store in DateHeaders
+                            // Sort the dates and add to DateHeaders
                             DateHeaders = uniqueDates.OrderBy(d => d).ToList();
 
-                            // Process each student's data to calculate cumulative hours
+                            // Process each student's data and calculate cumulative hours
                             foreach (var studentLog in attendanceData)
                             {
                                 int studentId = studentLog.Key;
                                 var studentName = studentLog.Value.studentName;
                                 var logs = studentLog.Value.logs;
 
-                                int totalHours = 0;
-                                int totalMinutes = 0;
+                                // Initialize cumulative hours and minutes
+                                int totalMinutes = logs.Sum(log => log.Hours * 60 + log.Minutes);
 
-                                // Calculate hours worked per date and cumulative hours
-                                var hoursPerDate = new Dictionary<DateTime, (int hours, int minutes)>();
-                                foreach (var log in logs)
-                                {
-                                    totalHours += log.Hours;
-                                    totalMinutes += log.Minutes;
-                                    hoursPerDate[log.Date] = (log.Hours, log.Minutes);
-                                }
-
-                                // Convert totalMinutes to hours if 60 or more
-                                totalHours += totalMinutes / 60;
+                                // Convert totalMinutes to hours and minutes
+                                int totalHours = totalMinutes / 60;
                                 totalMinutes = totalMinutes % 60;
 
-                                // Create a list of daily hours matching sorted dates
-                                var dailyHoursList = new List<string>();
-                                foreach (var date in DateHeaders)
-                                {
-                                    if (hoursPerDate.ContainsKey(date))
-                                    {
-                                        var (hours, minutes) = hoursPerDate[date];
-                                        dailyHoursList.Add($"{hours:D2}:{minutes:D2}");
-                                    }
-                                    else
-                                    {
-                                        dailyHoursList.Add("00:00");
-                                    }
-                                }
+                                // Create a dictionary to store hours worked for each date
+                                var hoursPerDate = logs.ToDictionary(log => log.Date, log => $"{log.Hours:D2}:{log.Minutes:D2}");
+
+                                // Create a list of daily hours matching the sorted date headers
+                                var dailyHoursList = DateHeaders
+                                    .Select(date => hoursPerDate.ContainsKey(date) ? hoursPerDate[date] : "00:00")
+                                    .ToList();
 
                                 // Format cumulative hours as HH:MM
                                 string formattedCumulativeHours = $"{totalHours:D2}:{totalMinutes:D2}";
 
-                                // Add student attendance record to the collection
+                                // Add to the AttendanceRecords collection
                                 AttendanceRecords.Add(new StudentAttendanceRecord
                                 {
                                     StudentId = studentId,
@@ -141,51 +157,82 @@ namespace Tracker
                         }
                     }
 
-                    // Generate grid layout to display attendance records
+                    // Generate the table-like Grid layout with fresh data
                     GenerateGridLayout();
                 }
                 catch (Exception ex)
                 {
-                    // ** Error Handling **
-                    // Display an error message if attendance data fails to load.
+                    // Handle any exceptions that occur during the database operation
                     DisplayAlert("Error", "Unable to load attendance data: " + ex.Message, "OK");
                 }
             }
         }
 
-        // ** Generate Grid Layout **
-        // Dynamically creates a grid layout for attendance records with student names, cumulative hours, and daily logs.
+
+        private void DeleteZeroMinuteEntry(int studentId, DateTime logDate)
+        {
+            using (var connection = new MySqlConnection(DatabaseConfig.ConnectionString))
+            {
+                connection.Open();
+
+                string deleteQuery = @"
+                    DELETE FROM time_logs 
+                    WHERE student_id = @studentId 
+                    AND log_date = @logDate 
+                    AND minutes_logged = 0";
+                
+                using (MySqlCommand deleteCommand = new MySqlCommand(deleteQuery, connection))
+                {
+                    deleteCommand.Parameters.AddWithValue("@studentId", studentId);
+                    deleteCommand.Parameters.AddWithValue("@logDate", logDate);
+
+                    deleteCommand.ExecuteNonQuery();
+                }
+            }
+        }
+
+
+
+
         private void GenerateGridLayout()
         {
-            // Clear existing children and define grid columns and rows
+            // Clear existing children in the grid
             AttendanceGrid.Children.Clear();
             AttendanceGrid.ColumnDefinitions.Clear();
             AttendanceGrid.RowDefinitions.Clear();
 
-            // Add column definitions for student name, cumulative hours, and each date
-            AttendanceGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
-            AttendanceGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+            // Add column definitions for student name, cumulative hours, each date, and delete button (conditionally)
+            AttendanceGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star }); // Student name
+            AttendanceGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star }); // Cumulative hours
             foreach (var date in DateHeaders)
             {
                 AttendanceGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
             }
+            if (isEditing)
+            {
+                AttendanceGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // Delete button
+            }
 
-            // Define rows for header and each student
-            AttendanceGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            // Add row definitions for header and each student
+            AttendanceGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Header row
             foreach (var _ in AttendanceRecords)
             {
                 AttendanceGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             }
 
-            // Add header labels
+            // Add header labels with borders
             AddCellWithBorder("Student Name", 0, 0, FontAttributes.Bold);
             AddCellWithBorder("Cumulative Hours", 0, 1, FontAttributes.Bold);
             for (int i = 0; i < DateHeaders.Count; i++)
             {
                 AddCellWithBorder(DateHeaders[i].ToString("MM/dd/yyyy"), 0, i + 2, FontAttributes.Bold);
             }
+            if (isEditing)
+            {
+                AddCellWithBorder("Actions", 0, DateHeaders.Count + 2, FontAttributes.Bold); // Header for delete button column
+            }
 
-            // Add student data rows
+            // Add student data rows with borders and delete button conditionally
             for (int row = 0; row < AttendanceRecords.Count; row++)
             {
                 var record = AttendanceRecords[row];
@@ -193,40 +240,597 @@ namespace Tracker
                 AddCellWithBorder(record.StudentName, row + 1, 0);
                 AddCellWithBorder(record.CumulativeHours, row + 1, 1);
 
+                // Add daily hours data with borders
                 for (int col = 0; col < record.DailyHours.Count; col++)
                 {
                     AddCellWithBorder(record.DailyHours[col], row + 1, col + 2);
                 }
+
+                // Conditionally add the delete button if in editing mode
+                if (isEditing)
+                {
+                    var deleteButton = new Button
+                    {
+                        Text = "Delete",
+                        BackgroundColor = Colors.Red,
+                        TextColor = Colors.White,
+                        CommandParameter = record.StudentId // Pass the StudentId as parameter
+                    };
+                    deleteButton.Clicked += OnDeleteButtonClicked;
+
+                    AttendanceGrid.Children.Add(deleteButton);
+                    Grid.SetRow(deleteButton, row + 1);
+                    Grid.SetColumn(deleteButton, DateHeaders.Count + 2);
+                }
             }
         }
 
-        // ** Helper Method: Add Cell with Border **
-        // Adds a label inside a frame to the grid to simulate a bordered cell.
+        // Helper method to add a cell with a border
         private void AddCellWithBorder(string text, int row, int column, FontAttributes fontAttributes = FontAttributes.None)
         {
-            var label = new Label
-            {
-                Text = text,
-                FontAttributes = fontAttributes,
-                HorizontalTextAlignment = TextAlignment.Center,
-                VerticalTextAlignment = TextAlignment.Center,
-                Padding = new Thickness(5)
-            };
+            // Allow editing only for time columns, which start from the third column onward (index 2)
+            bool isTimeColumn = column > 1; // Columns > 1 are time columns
+            bool isTimeRow = row > 0;
 
-            var frame = new Frame
+            if (isEditing && isTimeColumn && isTimeRow)
             {
-                Content = label,
-                BorderColor = Colors.Gray,
-                CornerRadius = 0,
-                Padding = 0,
-                HasShadow = false
-            };
+                var entry = new Entry
+                {
+                    Text = text,
+                    HorizontalTextAlignment = TextAlignment.Center,
+                    VerticalTextAlignment = TextAlignment.Center,
+                    FontAttributes = fontAttributes,
+                    //Padding = new Thickness(5),
+                    Keyboard = Keyboard.Text // Allows the user to enter formatted text like HH:MM
+                };
 
-            AttendanceGrid.Children.Add(frame);
-            Grid.SetRow(frame, row);
-            Grid.SetColumn(frame, column);
+                // Store the entry in the dictionary for future reference
+                entryDictionary[(row, column)] = entry;
+
+                // Add the entry to the grid with a frame around it
+                var frame = new Frame
+                {
+                    Content = entry,
+                    BorderColor = Colors.Gray,
+                    CornerRadius = 0,
+                    Padding = 0,
+                    HasShadow = false
+                };
+
+                AttendanceGrid.Children.Add(frame);
+                Grid.SetRow(frame, row);
+                Grid.SetColumn(frame, column);
+            }
+            else
+            {
+                // Use a label for non-editable fields (date headers, student name, cumulative hours)
+                var label = new Label
+                {
+                    Text = text,
+                    FontAttributes = fontAttributes,
+                    HorizontalTextAlignment = TextAlignment.Center,
+                    VerticalTextAlignment = TextAlignment.Center,
+                    Padding = new Thickness(5)
+                };
+
+                var frame = new Frame
+                {
+                    Content = label,
+                    BorderColor = Colors.Gray,
+                    CornerRadius = 0,
+                    Padding = 0,
+                    HasShadow = false
+                };
+
+                AttendanceGrid.Children.Add(frame);
+                Grid.SetRow(frame, row);
+                Grid.SetColumn(frame, column);
+            }
         }
+        //Make edit button, and logic for editing.
+        private void OnEditButtonClicked(object sender, EventArgs e)
+        {
+            isEditing = true;
+
+            // Clear existing toolbar items
+            ToolbarItems.Clear();
+
+            // Add Submit button
+            var submitToolbarItem = new ToolbarItem
+            {
+                Text = "Submit",
+                Order = ToolbarItemOrder.Primary,
+                Priority = 0
+            };
+            submitToolbarItem.Clicked += OnSubmitButtonClicked;
+            ToolbarItems.Add(submitToolbarItem);
+
+            // Add Cancel button
+            var cancelToolbarItem = new ToolbarItem
+            {
+                Text = "Cancel",
+                Order = ToolbarItemOrder.Primary,
+                Priority = 1
+            };
+            cancelToolbarItem.Clicked += OnCancelButtonClicked;
+            ToolbarItems.Add(cancelToolbarItem);
+
+            // Add Add Student button
+            var addStudentToolbarItem = new ToolbarItem
+            {
+                Text = "Add Student",
+                Order = ToolbarItemOrder.Primary,
+                Priority = 2
+            };
+            addStudentToolbarItem.Clicked += OnAddStudentButtonClicked;
+            ToolbarItems.Add(addStudentToolbarItem);
+
+            // Add Add Date button
+            var addDateToolbarItem = new ToolbarItem
+            {
+                Text = "Add Date",
+                Order = ToolbarItemOrder.Primary,
+                Priority = 3
+            };
+            addDateToolbarItem.Clicked += OnAddDateButtonClicked;
+            ToolbarItems.Add(addDateToolbarItem);
+            
+
+            
+            // Refresh the grid layout
+            GenerateGridLayout();
+        }
+
+
+        private async void OnSubmitButtonClicked(object sender, EventArgs e)
+        {
+            if (ValidateAndSaveChanges())
+            {
+                isEditing = false;
+
+                // Clear the toolbar and rebuild it
+                ToolbarItems.Clear();
+
+                // Add Edit button
+                var editToolbarItem = new ToolbarItem
+                {
+                    Text = "Edit",
+                    Order = ToolbarItemOrder.Primary,
+                    Priority = 0
+                };
+                editToolbarItem.Clicked += OnEditButtonClicked;
+                ToolbarItems.Add(editToolbarItem);
+
+                // Re-add "Add Student" and "Add Date" buttons
+                var addStudentToolbarItem = new ToolbarItem
+                {
+                    Text = "Add Student",
+                    Order = ToolbarItemOrder.Primary,
+                    Priority = 2
+                };
+                addStudentToolbarItem.Clicked += OnAddStudentButtonClicked;
+                ToolbarItems.Add(addStudentToolbarItem);
+
+                var addDateToolbarItem = new ToolbarItem
+                {
+                    Text = "Add Date",
+                    Order = ToolbarItemOrder.Primary,
+                    Priority = 3
+                };
+                addDateToolbarItem.Clicked += OnAddDateButtonClicked;
+                ToolbarItems.Add(addDateToolbarItem);
+
+                // Reload attendance log to update UI
+                AttendanceRecords.Clear();
+                LoadAttendanceLog();
+            }
+            else
+            {
+                await DisplayAlert("Error", "Invalid time entries detected. Please correct them before submitting.", "OK");
+            }
+        }
+
+
+
+        private void OnCancelButtonClicked(object sender, EventArgs e)
+        {
+            isEditing = false;
+
+            // Clear the toolbar and rebuild it
+            ToolbarItems.Clear();
+
+            // Add Edit button
+            var editToolbarItem = new ToolbarItem
+            {
+                Text = "Edit",
+                Order = ToolbarItemOrder.Primary,
+                Priority = 0
+            };
+            editToolbarItem.Clicked += OnEditButtonClicked;
+            ToolbarItems.Add(editToolbarItem);
+
+            // Re-add "Add Student" and "Add Date" buttons
+            var addStudentToolbarItem = new ToolbarItem
+            {
+                Text = "Add Student",
+                Order = ToolbarItemOrder.Primary,
+                Priority = 2
+            };
+            addStudentToolbarItem.Clicked += OnAddStudentButtonClicked;
+            ToolbarItems.Add(addStudentToolbarItem);
+
+            var addDateToolbarItem = new ToolbarItem
+            {
+                Text = "Add Date",
+                Order = ToolbarItemOrder.Primary,
+                Priority = 3
+            };
+            addDateToolbarItem.Clicked += OnAddDateButtonClicked;
+            ToolbarItems.Add(addDateToolbarItem);
+
+            // Refresh the grid layout
+            GenerateGridLayout();
+        }
+
+        private bool ValidateAndSaveChanges()
+        {
+            bool isValid = true;
+            var updates = new List<TimeLogUpdate>();
+
+            foreach (var kvp in entryDictionary)
+            {
+                var (row, column) = kvp.Key;
+                var entry = kvp.Value;
+
+                if (!TimeSpan.TryParse(entry.Text, out TimeSpan time))
+                {
+                    isValid = false;
+                    entry.TextColor = Colors.Red; // Highlight invalid entry
+                }
+                else
+                {
+                    var record = AttendanceRecords[row - 1];
+                    var date = DateHeaders[column - 2];
+
+                   
+                    updates.Add(new TimeLogUpdate
+                    {
+                        StudentId = record.StudentId,
+                        Date = date,
+                        totalMinutes = (int)time.TotalMinutes,
+                        courseId = record.courseId, 
+                        WorkDescription = record.WorkDescription 
+                    });
+                }
+            }
+
+            if (isValid)
+            {
+                SaveUpdatesToDatabase(updates);
+            }
+
+            return isValid;
+        }
+
+
+        private void SaveUpdatesToDatabase(List<TimeLogUpdate> updates)
+        {
+            using (var connection = new MySqlConnection(DatabaseConfig.ConnectionString))
+            {
+                try
+                {
+                    connection.Open();
+                    foreach (var update in updates)
+                    {
+                        // Update the query to match the new database schema
+                        string query = @"
+                            INSERT INTO time_logs(student_id, log_date, minutes_logged, course_id, work_desc)
+                            VALUES (@studentId, @logDate, @totalMinutes, @courseId, @workDescription)
+                            ON DUPLICATE KEY UPDATE 
+                                minutes_logged = @totalMinutes, 
+                                work_desc = @workDescription";
+
+                        using (var command = new MySqlCommand(query, connection))
+                        {
+                            // Map the parameters to the new table columns
+                            command.Parameters.AddWithValue("@studentId", update.StudentId);
+                            command.Parameters.AddWithValue("@logDate", update.Date);
+                            command.Parameters.AddWithValue("@totalMinutes", update.totalMinutes);
+                            command.Parameters.AddWithValue("@courseId", update.courseId);
+                            command.Parameters.AddWithValue("@workDescription", update.WorkDescription);
+
+                            command.ExecuteNonQuery();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    DisplayAlert("Error", $"Database save failed: {ex.Message}", "OK");
+                }
+            }
+        }
+
+
+
+
+
+        
+         //------------------------------------------------------------Deletion part---------------------------------------------------------------------------------------
+        private async void OnDeleteButtonClicked(object sender, EventArgs e)
+        {
+            if (sender is Button button && button.CommandParameter is int studentId)
+            {
+                bool confirmDelete = await DisplayAlert(
+                    "Confirm Delete",
+                    "Are you sure you want to delete this student and all their logs?",
+                    "Yes",
+                    "No"
+                );
+
+                if (confirmDelete)
+                {
+                    // Remove student from the in-memory AttendanceRecords list
+                    var recordToRemove = AttendanceRecords.FirstOrDefault(record => record.StudentId == studentId);
+                    if (recordToRemove != null)
+                    {
+                        AttendanceRecords.Remove(recordToRemove);
+                    }
+
+                    // Delete the student's data from the database
+                    try
+                    {
+                        DeleteStudentFromDatabase(studentId);
+                        await DisplayAlert("Success", "Student and their logs have been deleted.", "OK");
+                    }
+                    catch (Exception ex)
+                    {
+                        await DisplayAlert("Error", $"Failed to delete student: {ex.Message}", "OK");
+                    }
+
+                    // Refresh the UI to remove the student row
+                    GenerateGridLayout();
+                }
+            }
+        }
+
+
+
+    
+        private void DeleteStudentFromDatabase(int studentId)
+        {
+            using (var connection = new MySqlConnection(DatabaseConfig.ConnectionString))
+            {
+                connection.Open();
+
+                using (var transaction = connection.BeginTransaction())
+                {
+                    try
+                    {
+                        // Delete the student's time logs first
+                        string deleteLogsQuery = "DELETE FROM time_logs WHERE student_id = @studentId";
+                        using (var deleteLogsCommand = new MySqlCommand(deleteLogsQuery, connection, transaction))
+                        {
+                            deleteLogsCommand.Parameters.AddWithValue("@studentId", studentId);
+                            deleteLogsCommand.ExecuteNonQuery();
+                        }
+
+                        // Delete the student's record from the students table
+                        string deleteStudentQuery = "DELETE FROM students WHERE student_id = @studentId";
+                        using (var deleteStudentCommand = new MySqlCommand(deleteStudentQuery, connection, transaction))
+                        {
+                            deleteStudentCommand.Parameters.AddWithValue("@studentId", studentId);
+                            deleteStudentCommand.ExecuteNonQuery();
+                        }
+
+                        // Commit the transaction
+                        transaction.Commit();
+                    }
+                    catch
+                    {
+                        // Rollback in case of any errors
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+            }
+        }
+
+
+         //------------------------------------------------------------Addition part---------------------------------------------------------------------------------------
+        private async void OnAddStudentButtonClicked(object sender, EventArgs e)
+        {
+            // Show a custom entry form for student details
+            var addStudentPage = new AddStudentPage();
+            await Navigation.PushModalAsync(addStudentPage);
+
+            // Wait for the result
+            var result = await addStudentPage.GetStudentDetailsAsync();
+            if (result == null) return; // User canceled
+
+            try
+            {
+                
+                // Destructure the result
+                var (studentName, netId, utdId) = result.Value;
+
+                string defaultPassword = netId; // Default password
+                string defaultUserType = "Student"; // Default user type
+
+                // Save the student to the database
+                AddStudentToDatabase(utdId, netId, studentName, defaultPassword, defaultUserType);
+
+                // Refresh the attendance log
+                AttendanceRecords.Clear();
+                LoadAttendanceLog();
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert("Error", "Failed to add the student: " + ex.Message, "OK");
+            }
+        }
+
+
+        private void AddStudentToDatabase(int utdId, string netId, string fullName, string defaultPassword, string userType)
+        {
+            using (var connection = new MySqlConnection(DatabaseConfig.ConnectionString))
+            {
+                connection.Open();
+
+                // Split the full name into first and last names
+                var nameParts = fullName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+                string firstName = nameParts.Length > 0 ? nameParts[0] : "Unknown";
+                string lastName = nameParts.Length > 1 ? nameParts[1] : "Unknown";
+
+                string query = @"INSERT INTO users (utd_id, net_id, first_name, last_name, password, user_role) 
+                                VALUES (@utdId, @netId, @firstName, @lastName, @password, @usertype)";
+
+                using (var command = new MySqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@utdId", utdId);
+                    command.Parameters.AddWithValue("@netId", netId);
+                    command.Parameters.AddWithValue("@firstName", firstName);
+                    command.Parameters.AddWithValue("@lastName", lastName);
+                    command.Parameters.AddWithValue("@password", defaultPassword); // Set the default password
+                    command.Parameters.AddWithValue("@usertype", userType); // Set the default usertype
+                    command.ExecuteNonQuery();
+                }
+            }
+        }
+
+        private async void OnAddDateButtonClicked(object sender, EventArgs e)
+        {
+            // Retrieve students from the database
+            var students = GetAllStudents();
+
+            if (students.Count == 0)
+            {
+                await DisplayAlert("Error", "No students found in the database.", "OK");
+                return;
+            }
+
+            // Display a picker to select a student
+            string studentName = await DisplayActionSheet(
+                "Select a Student", 
+                "Cancel", 
+                null, 
+                students.Select(s => s.FullName).ToArray()
+            );
+
+            if (studentName == null || studentName == "Cancel")
+                return;
+
+            // Retrieve the selected student's ID
+            var selectedStudent = students.FirstOrDefault(s => s.FullName == studentName);
+            if (selectedStudent == null)
+            {
+                await DisplayAlert("Error", "Selected student not found.", "OK");
+                return;
+            }
+
+            // Prompt for a date in MM/dd/yyyy format
+            string dateInput = await DisplayPromptAsync(
+                "Add Date",
+                "Enter a date (MM/dd/yyyy):",
+                placeholder: "MM/dd/yyyy",
+                keyboard: Keyboard.Text
+            );
+
+            if (!DateTime.TryParse(dateInput, out DateTime selectedDate))
+            {
+                await DisplayAlert("Error", "Invalid date format. Please use MM/dd/yyyy.", "OK");
+                return;
+            }
+
+            // Prompt for time in HH:mm format
+            string timeInput = await DisplayPromptAsync(
+                "Add Time",
+                "Enter time (HH:mm):",
+                placeholder: "HH:mm",
+                keyboard: Keyboard.Text
+            );
+
+            if (!TimeSpan.TryParse(timeInput, out TimeSpan selectedTime))
+            {
+                await DisplayAlert("Error", "Invalid time format. Please use HH:mm.", "OK");
+                return;
+            }
+
+            try
+            {
+                // Combine date and time into a DateTime object
+                DateTime logDateTime = selectedDate.Add(selectedTime);
+
+                // Add the new date and time to the database
+                AddDateTimeToDatabase(selectedStudent.UtdId, logDateTime);
+
+                // Refresh the attendance log
+                AttendanceRecords.Clear();
+                LoadAttendanceLog();
+
+                await DisplayAlert("Success", "Date and time added successfully.", "OK");
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert("Error", "Failed to add the date and time: " + ex.Message, "OK");
+            }
+        }
+
+
+
+        private List<Student> GetAllStudents()
+        {
+            var students = new List<Student>();
+
+            using (var connection = new MySqlConnection(DatabaseConfig.ConnectionString))
+            {
+                connection.Open();
+
+                string query = "SELECT utd_id, CONCAT(first_name, ' ', last_name) AS full_name " +
+                               "FROM users WHERE user_role = 'Student'" ;
+
+                using (var command = new MySqlCommand(query, connection))
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        students.Add(new Student
+                        {
+                            UtdId = reader.GetInt32("utd_id"),
+                            FullName = reader.GetString("full_name")
+                        });
+                    }
+                }
+            }
+
+            return students;
+        }
+
+        private void AddDateTimeToDatabase(int utdId, DateTime logDateTime)
+        {
+            using (var connection = new MySqlConnection(DatabaseConfig.ConnectionString))
+            {
+                connection.Open();
+
+                string query = @"
+                    INSERT INTO time_logs (utd_id, log_date, hours_logged, minutes_logged, course_id)
+                    VALUES (@utdId, @logDateTime, 0, 0, @courseId)
+                    ON DUPLICATE KEY UPDATE log_date = @logDateTime";
+
+                using (var command = new MySqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@utdId", utdId);
+                    command.Parameters.AddWithValue("@logDateTime", logDateTime);
+                    command.Parameters.AddWithValue("@courseId", ClassName); // Replace with actual course identifier
+                    command.ExecuteNonQuery();
+                }
+            }
+        }
+
+
+
     }
+
+    
 
     public class DailyLog
     {
@@ -235,11 +839,29 @@ namespace Tracker
         public int Minutes { get; set; }
     }
 
-    public class StudentAttendanceRecord
+    public class TimeLogUpdate
     {
         public int StudentId { get; set; }
-        public string StudentName { get; set; }
-        public string CumulativeHours { get; set; }
-        public List<string> DailyHours { get; set; }
+        public DateTime Date { get; set; }
+        public int totalMinutes { get; set; }
+        public int courseId {get; set;}
+        public String WorkDescription {get; set;}
+    }
+
+    public class StudentAttendanceRecord
+    {
+        public int StudentId { get; set; } // Unique identifier for the student
+        public string StudentName { get; set; } // Full name of the student
+        public string CumulativeHours { get; set; } // Total hours logged as a formatted string
+        public List<string> DailyHours { get; set; } // List of daily logged hours as strings
+        public int courseId { get; set; } // Course ID associated with the student
+        public string WorkDescription { get; set; } // Description of the work done
+    }
+
+
+    public class Student
+    {
+        public int UtdId { get; set; }
+        public string FullName { get; set; }
     }
 }
