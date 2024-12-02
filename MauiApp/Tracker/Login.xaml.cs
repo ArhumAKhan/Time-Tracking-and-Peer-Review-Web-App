@@ -70,7 +70,10 @@ namespace Tracker
 
                             // ** Navigation **
                             // Navigate to ClassListPage and pass the retrieved utd_id
-                            await Navigation.PushAsync(new ClassList(userId));
+                            //await Navigation.PushAsync(new ClassList(userId));
+                            // Assuming login success; navigate to the TabbedPage
+                            await Navigation.PushAsync(new AppTabbedPage(userId));
+
                         }
                         else
                         {

@@ -22,10 +22,10 @@ namespace Tracker
         private int _userId; // Professor's user ID
         private Course _selectedCourse; // Selected course object
 
-        public ClassList(int utdId)
+        public ClassList(int userId)
         {
             InitializeComponent();
-            _userId = utdId;
+            _userId = userId;
             LoadClassList();
         }
 

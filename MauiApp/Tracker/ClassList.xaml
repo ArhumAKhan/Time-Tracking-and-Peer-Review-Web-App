@@ -9,7 +9,7 @@
                 SelectedIndexChanged="OnClassSelected"/>
 
         <!-- Add a BoxView to create space between the Picker and the Button -->
-        <BoxView HeightRequest="20" Color="White" />
+        <BoxView HeightRequest="20" Color="Grey" />
 
         <Button Text="Go to Time Log"
                 x:Name="TimeLogButton"
