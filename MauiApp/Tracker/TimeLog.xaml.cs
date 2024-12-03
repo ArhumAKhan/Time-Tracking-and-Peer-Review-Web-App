@@ -14,10 +14,10 @@ namespace Tracker
         private List<StudentAttendanceRecord> AttendanceRecords { get; set; }
         private Dictionary<(int row, int column), Entry> entryDictionary;
         private bool isEditing = false;
-    
 
 
-       public TimeLog(string className)
+
+        public TimeLog(string className)
         {
             ClassName = className;
             InitializeComponent();
@@ -56,8 +56,8 @@ namespace Tracker
             addDateToolbarItem.Clicked += OnAddDateButtonClicked;
             ToolbarItems.Add(addDateToolbarItem);
         }
-        
-        
+
+
         private void LoadAttendanceLog()
         {
             AttendanceRecords.Clear(); // Clear existing records to avoid duplication
@@ -180,7 +180,7 @@ namespace Tracker
                     WHERE student_id = @studentId 
                     AND log_date = @logDate 
                     AND minutes_logged = 0";
-                
+
                 using (MySqlCommand deleteCommand = new MySqlCommand(deleteQuery, connection))
                 {
                     deleteCommand.Parameters.AddWithValue("@studentId", studentId);
@@ -374,9 +374,9 @@ namespace Tracker
             };
             addDateToolbarItem.Clicked += OnAddDateButtonClicked;
             ToolbarItems.Add(addDateToolbarItem);
-            
 
-            
+
+
             // Refresh the grid layout
             GenerateGridLayout();
         }
@@ -492,14 +492,14 @@ namespace Tracker
                     var record = AttendanceRecords[row - 1];
                     var date = DateHeaders[column - 2];
 
-                   
+
                     updates.Add(new TimeLogUpdate
                     {
                         StudentId = record.StudentId,
                         Date = date,
                         totalMinutes = (int)time.TotalMinutes,
-                        courseId = record.courseId, 
-                        WorkDescription = record.WorkDescription 
+                        courseId = record.courseId,
+                        WorkDescription = record.WorkDescription
                     });
                 }
             }
@@ -554,8 +554,8 @@ namespace Tracker
 
 
 
-        
-         //------------------------------------------------------------Deletion part---------------------------------------------------------------------------------------
+
+        //------------------------------------------------------------Deletion part---------------------------------------------------------------------------------------
         private async void OnDeleteButtonClicked(object sender, EventArgs e)
         {
             if (sender is Button button && button.CommandParameter is int studentId)
@@ -576,10 +576,12 @@ namespace Tracker
                         AttendanceRecords.Remove(recordToRemove);
                     }
 
-                    // Delete the student's data from the database
+                    // Try deleting the student's data from the database
+                    bool deleteSuccess = false;
                     try
                     {
                         DeleteStudentFromDatabase(studentId);
+                        deleteSuccess = true;
                         await DisplayAlert("Success", "Student and their logs have been deleted.", "OK");
                     }
                     catch (Exception ex)
@@ -590,12 +592,57 @@ namespace Tracker
                     // Refresh the UI to remove the student row
                     GenerateGridLayout();
                 }
+
+                // Exit edit mode
+                ExitEditMode();
             }
+        }
+
+        private void ExitEditMode()
+        {
+            isEditing = false;
+
+            // Clear the toolbar and rebuild it
+            ToolbarItems.Clear();
+
+            // Add the Edit button
+            var editToolbarItem = new ToolbarItem
+            {
+                Text = "Edit",
+                Order = ToolbarItemOrder.Primary,
+                Priority = 0
+            };
+            editToolbarItem.Clicked += OnEditButtonClicked;
+            ToolbarItems.Add(editToolbarItem);
+
+            // Add the Add Student button
+            var addStudentToolbarItem = new ToolbarItem
+            {
+                Text = "Add Student",
+                Order = ToolbarItemOrder.Primary,
+                Priority = 1
+            };
+            addStudentToolbarItem.Clicked += OnAddStudentButtonClicked;
+            ToolbarItems.Add(addStudentToolbarItem);
+
+            // Add the Add Date button
+            var addDateToolbarItem = new ToolbarItem
+            {
+                Text = "Add Date",
+                Order = ToolbarItemOrder.Primary,
+                Priority = 2
+            };
+            addDateToolbarItem.Clicked += OnAddDateButtonClicked;
+            ToolbarItems.Add(addDateToolbarItem);
+
+            // Reload the attendance log to refresh the UI
+            AttendanceRecords.Clear();
+            LoadAttendanceLog();
         }
 
 
 
-    
+
         private void DeleteStudentFromDatabase(int studentId)
         {
             using (var connection = new MySqlConnection(DatabaseConfig.ConnectionString))
@@ -614,14 +661,6 @@ namespace Tracker
                             deleteLogsCommand.ExecuteNonQuery();
                         }
 
-                        // Delete the student's record from the students table
-                        string deleteStudentQuery = "DELETE FROM students WHERE student_id = @studentId";
-                        using (var deleteStudentCommand = new MySqlCommand(deleteStudentQuery, connection, transaction))
-                        {
-                            deleteStudentCommand.Parameters.AddWithValue("@studentId", studentId);
-                            deleteStudentCommand.ExecuteNonQuery();
-                        }
-
                         // Commit the transaction
                         transaction.Commit();
                     }
@@ -636,7 +675,7 @@ namespace Tracker
         }
 
 
-         //------------------------------------------------------------Addition part---------------------------------------------------------------------------------------
+        //------------------------------------------------------------Addition part---------------------------------------------------------------------------------------
         private async void OnAddStudentButtonClicked(object sender, EventArgs e)
         {
             // Show a custom entry form for student details
@@ -649,7 +688,7 @@ namespace Tracker
 
             try
             {
-                
+
                 // Destructure the result
                 var (studentName, netId, utdId) = result.Value;
 
@@ -710,9 +749,9 @@ namespace Tracker
 
             // Display a picker to select a student
             string studentName = await DisplayActionSheet(
-                "Select a Student", 
-                "Cancel", 
-                null, 
+                "Select a Student",
+                "Cancel",
+                null,
                 students.Select(s => s.FullName).ToArray()
             );
 
@@ -757,11 +796,12 @@ namespace Tracker
 
             try
             {
-                // Combine date and time into a DateTime object
-                DateTime logDateTime = selectedDate.Add(selectedTime);
+
+                // Retrieve the course ID associated with the current class
+                int studentId = GetStudentIdFromUtdId(selectedStudent.UtdId);
 
                 // Add the new date and time to the database
-                AddDateTimeToDatabase(selectedStudent.UtdId, logDateTime);
+                AddDateTimeToDatabase(studentId, Int32.Parse(ClassName), selectedDate.Date, selectedTime);
 
                 // Refresh the attendance log
                 AttendanceRecords.Clear();
@@ -777,6 +817,7 @@ namespace Tracker
 
 
 
+
         private List<Student> GetAllStudents()
         {
             var students = new List<Student>();
@@ -786,7 +827,7 @@ namespace Tracker
                 connection.Open();
 
                 string query = "SELECT utd_id, CONCAT(first_name, ' ', last_name) AS full_name " +
-                               "FROM users WHERE user_role = 'Student'" ;
+                               "FROM users WHERE user_role = 'Student'";
 
                 using (var command = new MySqlCommand(query, connection))
                 using (var reader = command.ExecuteReader())
@@ -805,22 +846,67 @@ namespace Tracker
             return students;
         }
 
-        private void AddDateTimeToDatabase(int utdId, DateTime logDateTime)
+        private int GetStudentIdFromUtdId(int utdid)
         {
             using (var connection = new MySqlConnection(DatabaseConfig.ConnectionString))
             {
                 connection.Open();
 
+                // Query to join the students table with the users table to retrieve student_id
                 string query = @"
-                    INSERT INTO time_logs (utd_id, log_date, hours_logged, minutes_logged, course_id)
-                    VALUES (@utdId, @logDateTime, 0, 0, @courseId)
-                    ON DUPLICATE KEY UPDATE log_date = @logDateTime";
+            SELECT s.student_id
+            FROM students AS s
+            INNER JOIN users AS u ON s.user_id = u.user_id
+            WHERE u.utd_id = @utdid";
 
                 using (var command = new MySqlCommand(query, connection))
                 {
-                    command.Parameters.AddWithValue("@utdId", utdId);
-                    command.Parameters.AddWithValue("@logDateTime", logDateTime);
-                    command.Parameters.AddWithValue("@courseId", ClassName); // Replace with actual course identifier
+                    // Passing the UTD ID as a parameter
+                    command.Parameters.AddWithValue("@utdid", utdid);
+
+                    // Execute the query and retrieve the result
+                    var result = command.ExecuteScalar();
+
+                    // If a result is found, return the student_id
+                    if (result != null)
+                    {
+                        return Convert.ToInt32(result);
+                    }
+                    else
+                    {
+                        // Throw an exception if no student_id is found
+                        throw new Exception($"Student ID not found for UTD ID: {utdid}");
+                    }
+                }
+            }
+        }
+
+
+
+        private void AddDateTimeToDatabase(int studentId, int courseId, DateTime date, TimeSpan time)
+        {
+            using (var connection = new MySqlConnection(DatabaseConfig.ConnectionString))
+            {
+                connection.Open();
+
+                // Calculate the total minutes from the TimeSpan
+                int totalMinutes = (int)time.TotalMinutes;
+
+                string query = @"
+        INSERT INTO time_logs (student_id, course_id, log_date, minutes_logged, work_desc)
+        VALUES (@studentId, @courseId, @logDate, @minutesLogged, @workDesc)
+        ON DUPLICATE KEY UPDATE 
+        minutes_logged = @minutesLogged,
+        work_desc = @workDesc";
+
+                using (var command = new MySqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@studentId", studentId);
+                    command.Parameters.AddWithValue("@courseId", courseId);
+                    command.Parameters.AddWithValue("@logDate", date.Date); // Pass only the date part
+                    command.Parameters.AddWithValue("@minutesLogged", totalMinutes); // Use the calculated total minutes
+                    command.Parameters.AddWithValue("@workDesc", "Empty work description, professor edit");
+
                     command.ExecuteNonQuery();
                 }
             }
@@ -828,9 +914,10 @@ namespace Tracker
 
 
 
+
     }
 
-    
+
 
     public class DailyLog
     {
@@ -844,8 +931,8 @@ namespace Tracker
         public int StudentId { get; set; }
         public DateTime Date { get; set; }
         public int totalMinutes { get; set; }
-        public int courseId {get; set;}
-        public String WorkDescription {get; set;}
+        public int courseId { get; set; }
+        public String WorkDescription { get; set; }
     }
 
     public class StudentAttendanceRecord
