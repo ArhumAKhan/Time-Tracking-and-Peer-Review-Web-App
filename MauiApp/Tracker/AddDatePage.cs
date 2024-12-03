@@ -1,4 +1,15 @@
 using Tracker;
+
+       // ******************************************************************************
+        // * Add date page for Tracker Application
+        // *
+        // * Written by Jaden Nguyen for CS 4485.
+        // * NetID: jan200003
+        // *
+        // * This page puts all the entries for adding a date for a specific student onto one display
+        // * Errors display if incorrect (invalid) information is put in or nothing is put in and tried to be submitted.
+        // * Returns the results back to TimeLog.xaml.cs
+        // ******************************************************************************
 public class AddDatePage : ContentPage
 {
     private Picker studentPicker;
@@ -10,18 +21,18 @@ public class AddDatePage : ContentPage
 
     private TaskCompletionSource<TimeLogUpdate?> tcs;
 
-    private List<Student> _students;
-    private int _courseId;
+    private List<Student> AddDateStudents;
+    private int AddDateStudentscourseId;
 
     public AddDatePage(List<Student> students, int courseId)
     {
-        _students = students;
-        _courseId = courseId; // Save the course ID
+        AddDateStudents = students;
+        AddDateStudentscourseId = courseId; 
         Title = "Add Date";
 
         // Student Picker
         studentPicker = new Picker { Title = "Select Student" };
-        studentPicker.ItemsSource = _students.Select(s => s.FullName).ToList();
+        studentPicker.ItemsSource = AddDateStudents.Select(s => s.FullName).ToList();
 
         // Date Entry
         dateEntry = new Entry { Placeholder = "Date (MM/dd/yyyy)", Keyboard = Keyboard.Text };
@@ -56,7 +67,11 @@ public class AddDatePage : ContentPage
             }
         };
     }
-
+    
+        // ******************************************************************************
+        // * Handles the submission of the page
+        // * Validates the input and creates the time log to be updated
+        // ******************************************************************************
     private void OnSubmitClicked(object sender, EventArgs e)
     {
         if (studentPicker.SelectedIndex == -1)
@@ -83,7 +98,7 @@ public class AddDatePage : ContentPage
             return;
         }
 
-        var selectedStudent = _students[studentPicker.SelectedIndex];
+        var selectedStudent = AddDateStudents[studentPicker.SelectedIndex];
 
         // Create TimeLogUpdate object to return
         var timeLogUpdate = new TimeLogUpdate
@@ -92,19 +107,28 @@ public class AddDatePage : ContentPage
             Date = selectedDate,
             totalMinutes = (int)selectedTime.TotalMinutes,
             WorkDescription = workDescriptionEntry.Text,
-            courseId = _courseId // Use the course ID from the constructor
+            courseId = AddDateStudentscourseId 
         };
 
         tcs?.TrySetResult(timeLogUpdate);
         Navigation.PopModalAsync();
     }
 
+    // ******************************************************************************
+    // * Handles the cancelation of the page
+    // * Returns null and from TimeLog.xaml.cs, it returns to the previous page.
+    // ******************************************************************************
     private void OnCancelClicked(object sender, EventArgs e)
     {
         tcs?.TrySetResult(null);
         Navigation.PopModalAsync();
     }
 
+
+    // ******************************************************************************
+    // * Returns a task to await the result of the form submission
+    // * The task contains a tuple with the TimeLogUpdate object to be updated and if it is canceled then it returns null.
+    // ******************************************************************************
     public Task<TimeLogUpdate?> GetTimeLogUpdateAsync()
     {
         tcs = new TaskCompletionSource<TimeLogUpdate?>();
