@@ -70,7 +70,8 @@ namespace Tracker
                     connection.Open();
 
                     string query = @"
-                        SELECT tl.student_id, tl.log_date, tl.minutes_logged, CONCAT(us.first_name, ' ', us.last_name) AS student_name
+                        SELECT tl.student_id, tl.log_date, tl.minutes_logged, tl.course_id, 
+                            CONCAT(us.first_name, ' ', us.last_name) AS student_name
                         FROM time_logs tl
                         JOIN students st ON tl.student_id = st.student_id
                         JOIN users us ON st.user_id = us.user_id
@@ -79,11 +80,11 @@ namespace Tracker
 
                     using (MySqlCommand command = new MySqlCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@courseId", ClassName);
+                        command.Parameters.AddWithValue("@courseId", int.Parse(ClassName));
 
                         using (MySqlDataReader reader = command.ExecuteReader())
                         {
-                            var attendanceData = new Dictionary<int, (string studentName, List<DailyLog> logs)>();
+                            var attendanceData = new Dictionary<int, (string studentName, int courseId, List<DailyLog> logs)>();
                             var uniqueDates = new HashSet<DateTime>();
 
                             while (reader.Read())
@@ -91,6 +92,7 @@ namespace Tracker
                                 int studentId = reader.GetInt32("student_id");
                                 DateTime logDate = reader.GetDateTime("log_date");
                                 int minutesLogged = reader.GetInt32("minutes_logged");
+                                int courseId = reader.GetInt32("course_id"); // Retrieve course_id
                                 string studentName = reader.GetString("student_name");
 
                                 // If minutes_logged is zero, delete this record from the database
@@ -106,7 +108,7 @@ namespace Tracker
                                 // Add the log to the corresponding student's list
                                 if (!attendanceData.ContainsKey(studentId))
                                 {
-                                    attendanceData[studentId] = (studentName, new List<DailyLog>());
+                                    attendanceData[studentId] = (studentName, courseId, new List<DailyLog>());
                                 }
 
                                 attendanceData[studentId].logs.Add(new DailyLog
@@ -125,6 +127,7 @@ namespace Tracker
                             {
                                 int studentId = studentLog.Key;
                                 var studentName = studentLog.Value.studentName;
+                                int courseId = studentLog.Value.courseId;
                                 var logs = studentLog.Value.logs;
 
                                 // Initialize cumulative hours and minutes
@@ -151,7 +154,8 @@ namespace Tracker
                                     StudentId = studentId,
                                     StudentName = studentName,
                                     CumulativeHours = formattedCumulativeHours,
-                                    DailyHours = dailyHoursList
+                                    DailyHours = dailyHoursList,
+                                    courseId = courseId 
                                 });
                             }
                         }
@@ -170,26 +174,49 @@ namespace Tracker
 
 
         private void DeleteZeroMinuteEntry(int studentId, DateTime logDate)
+{
+    using (var connection = new MySqlConnection(DatabaseConfig.ConnectionString))
+    {
+        connection.Open();
+
+        string deleteQuery = @"
+            DELETE FROM time_logs 
+            WHERE student_id = @studentId 
+            AND log_date = @logDate 
+            AND minutes_logged = 0";
+
+        using (MySqlCommand deleteCommand = new MySqlCommand(deleteQuery, connection))
         {
-            using (var connection = new MySqlConnection(DatabaseConfig.ConnectionString))
-            {
-                connection.Open();
+            deleteCommand.Parameters.AddWithValue("@studentId", studentId);
+            deleteCommand.Parameters.AddWithValue("@logDate", logDate);
 
-                string deleteQuery = @"
-                    DELETE FROM time_logs 
-                    WHERE student_id = @studentId 
-                    AND log_date = @logDate 
-                    AND minutes_logged = 0";
-
-                using (MySqlCommand deleteCommand = new MySqlCommand(deleteQuery, connection))
-                {
-                    deleteCommand.Parameters.AddWithValue("@studentId", studentId);
-                    deleteCommand.Parameters.AddWithValue("@logDate", logDate);
-
-                    deleteCommand.ExecuteNonQuery();
-                }
-            }
+            deleteCommand.ExecuteNonQuery();
         }
+    }
+
+    // Remove the corresponding log from AttendanceRecords and update DateHeaders
+    var recordToRemove = AttendanceRecords.FirstOrDefault(r => r.StudentId == studentId);
+    if (recordToRemove != null)
+    {
+        // Find and remove the log date from DailyHours
+        int dateIndex = DateHeaders.IndexOf(logDate);
+        if (dateIndex >= 0)
+        {
+            recordToRemove.DailyHours[dateIndex] = "00:00"; // Set to "00:00" to indicate no hours
+
+            // Remove date from DateHeaders if no students have hours logged
+            bool isDateEmpty = AttendanceRecords.All(r => r.DailyHours[dateIndex] == "00:00");
+            if (isDateEmpty)
+                DateHeaders.RemoveAt(dateIndex);
+        }
+
+        // Remove the record if all hours are zero
+        bool allZero = recordToRemove.DailyHours.All(h => h == "00:00");
+        if (allZero)
+            AttendanceRecords.Remove(recordToRemove);
+    }
+}
+
 
 
 
@@ -384,51 +411,117 @@ namespace Tracker
 
         private async void OnSubmitButtonClicked(object sender, EventArgs e)
         {
-            if (ValidateAndSaveChanges())
+            // Ensure the data structures are synchronized
+            if (AttendanceRecords.Count == 0 || entryDictionary.Count == 0)
             {
-                isEditing = false;
-
-                // Clear the toolbar and rebuild it
-                ToolbarItems.Clear();
-
-                // Add Edit button
-                var editToolbarItem = new ToolbarItem
-                {
-                    Text = "Edit",
-                    Order = ToolbarItemOrder.Primary,
-                    Priority = 0
-                };
-                editToolbarItem.Clicked += OnEditButtonClicked;
-                ToolbarItems.Add(editToolbarItem);
-
-                // Re-add "Add Student" and "Add Date" buttons
-                var addStudentToolbarItem = new ToolbarItem
-                {
-                    Text = "Add Student",
-                    Order = ToolbarItemOrder.Primary,
-                    Priority = 2
-                };
-                addStudentToolbarItem.Clicked += OnAddStudentButtonClicked;
-                ToolbarItems.Add(addStudentToolbarItem);
-
-                var addDateToolbarItem = new ToolbarItem
-                {
-                    Text = "Add Date",
-                    Order = ToolbarItemOrder.Primary,
-                    Priority = 3
-                };
-                addDateToolbarItem.Clicked += OnAddDateButtonClicked;
-                ToolbarItems.Add(addDateToolbarItem);
-
-                // Reload attendance log to update UI
-                AttendanceRecords.Clear();
-                LoadAttendanceLog();
+                await DisplayAlert("Error", "No data available to submit. Please make changes or reload the data.", "OK");
+                return;
             }
-            else
+
+            // First, validate and check for changes
+            bool isValid = true;
+            bool hasChanges = false;
+            var updates = new List<TimeLogUpdate>();
+
+            foreach (var kvp in entryDictionary)
+            {
+                var (row, column) = kvp.Key;
+
+                // Validate row exists in AttendanceRecords
+                if (row - 1 >= AttendanceRecords.Count || row < 1)
+                {
+                    continue; // Skip invalid or removed rows
+                }
+
+                var entry = kvp.Value;
+
+                // Validate the time entry
+                if (!TimeSpan.TryParse(entry.Text, out TimeSpan time))
+                {
+                    isValid = false;
+                    entry.TextColor = Colors.Red; // Highlight invalid entry
+                }
+                else
+                {
+                    var record = AttendanceRecords[row - 1];
+                    var date = DateHeaders[column - 2];
+                    int totalMinutes = (int)time.TotalMinutes;
+
+                    // Check if the value has changed
+                    var existingValue = record.DailyHours[column - 2];
+                    string formattedTime = $"{time.Hours:D2}:{time.Minutes:D2}";
+                    if (existingValue != formattedTime)
+                    {
+                        hasChanges = true; // Mark as having changes
+                    }
+
+                    updates.Add(new TimeLogUpdate
+                    {
+                        StudentId = record.StudentId,
+                        Date = date,
+                        totalMinutes = totalMinutes,
+                        courseId = record.courseId,
+                        WorkDescription = record.WorkDescription
+                    });
+                }
+            }
+
+            // Handle no changes scenario
+            if (!hasChanges)
+            {
+                await DisplayAlert("Error", "No changes have been made.", "OK");
+                return; // Stop further execution
+            }
+
+            // Handle invalid entries scenario
+            if (!isValid)
             {
                 await DisplayAlert("Error", "Invalid time entries detected. Please correct them before submitting.", "OK");
+                return; // Stop further execution
             }
+
+            // Save the changes if valid and changes are detected
+            SaveUpdatesToDatabase(updates);
+
+            // Exit editing mode
+            isEditing = false;
+
+            // Rebuild toolbar
+            ToolbarItems.Clear();
+
+            var editToolbarItem = new ToolbarItem
+            {
+                Text = "Edit",
+                Order = ToolbarItemOrder.Primary,
+                Priority = 0
+            };
+            editToolbarItem.Clicked += OnEditButtonClicked;
+            ToolbarItems.Add(editToolbarItem);
+
+            var addStudentToolbarItem = new ToolbarItem
+            {
+                Text = "Add Student",
+                Order = ToolbarItemOrder.Primary,
+                Priority = 2
+            };
+            addStudentToolbarItem.Clicked += OnAddStudentButtonClicked;
+            ToolbarItems.Add(addStudentToolbarItem);
+
+            var addDateToolbarItem = new ToolbarItem
+            {
+                Text = "Add Date",
+                Order = ToolbarItemOrder.Primary,
+                Priority = 3
+            };
+            addDateToolbarItem.Clicked += OnAddDateButtonClicked;
+            ToolbarItems.Add(addDateToolbarItem);
+
+            // Reload attendance log to update UI
+            AttendanceRecords.Clear();
+            LoadAttendanceLog();
         }
+
+
 
 
 
@@ -475,6 +568,7 @@ namespace Tracker
         private bool ValidateAndSaveChanges()
         {
             bool isValid = true;
+            bool hasChanges = false; // Flag to check if there are any changes
             var updates = new List<TimeLogUpdate>();
 
             foreach (var kvp in entryDictionary)
@@ -491,17 +585,32 @@ namespace Tracker
                 {
                     var record = AttendanceRecords[row - 1];
                     var date = DateHeaders[column - 2];
+                    int totalMinutes = (int)time.TotalMinutes;
 
+                    // Check if the entry value is different from the existing value
+                    var existingValue = record.DailyHours[column - 2];
+                    string formattedTime = $"{time.Hours:D2}:{time.Minutes:D2}";
+                    if (existingValue != formattedTime)
+                    {
+                        hasChanges = true; // A change has been detected
+                    }
 
                     updates.Add(new TimeLogUpdate
                     {
                         StudentId = record.StudentId,
                         Date = date,
-                        totalMinutes = (int)time.TotalMinutes,
+                        totalMinutes = totalMinutes,
                         courseId = record.courseId,
                         WorkDescription = record.WorkDescription
                     });
                 }
+            }
+
+            if (!hasChanges)
+            {
+                // No changes detected
+                DisplayAlert("Error", "No changes have been made.", "OK");
+                return false;
             }
 
             if (isValid)
@@ -511,6 +620,7 @@ namespace Tracker
 
             return isValid;
         }
+
 
 
         private void SaveUpdatesToDatabase(List<TimeLogUpdate> updates)
@@ -641,8 +751,6 @@ namespace Tracker
         }
 
 
-
-
         private void DeleteStudentFromDatabase(int studentId)
         {
             using (var connection = new MySqlConnection(DatabaseConfig.ConnectionString))
@@ -675,7 +783,7 @@ namespace Tracker
         }
 
 
-        //------------------------------------------------------------Addition part---------------------------------------------------------------------------------------
+        //------------------------------------------------------------Addition of Student---------------------------------------------------------------------------------------
         private async void OnAddStudentButtonClicked(object sender, EventArgs e)
         {
             // Show a custom entry form for student details
@@ -714,27 +822,60 @@ namespace Tracker
             using (var connection = new MySqlConnection(DatabaseConfig.ConnectionString))
             {
                 connection.Open();
-
-                // Split the full name into first and last names
-                var nameParts = fullName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
-                string firstName = nameParts.Length > 0 ? nameParts[0] : "Unknown";
-                string lastName = nameParts.Length > 1 ? nameParts[1] : "Unknown";
-
-                string query = @"INSERT INTO users (utd_id, net_id, first_name, last_name, password, user_role) 
-                                VALUES (@utdId, @netId, @firstName, @lastName, @password, @usertype)";
-
-                using (var command = new MySqlCommand(query, connection))
+                using (var transaction = connection.BeginTransaction())
                 {
-                    command.Parameters.AddWithValue("@utdId", utdId);
-                    command.Parameters.AddWithValue("@netId", netId);
-                    command.Parameters.AddWithValue("@firstName", firstName);
-                    command.Parameters.AddWithValue("@lastName", lastName);
-                    command.Parameters.AddWithValue("@password", defaultPassword); // Set the default password
-                    command.Parameters.AddWithValue("@usertype", userType); // Set the default usertype
-                    command.ExecuteNonQuery();
+                    try
+                    {
+                        // Split the full name into first and last names
+                        var nameParts = fullName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+                        string firstName = nameParts.Length > 0 ? nameParts[0] : "Unknown";
+                        string lastName = nameParts.Length > 1 ? nameParts[1] : "Unknown";
+
+                        // Insert into the users table
+                        string insertUserQuery = @"
+                    INSERT INTO users (utd_id, net_id, first_name, last_name, password, user_role)
+                    VALUES (@utdId, @netId, @firstName, @lastName, @password, @userType)";
+                        using (var command = new MySqlCommand(insertUserQuery, connection, transaction))
+                        {
+                            command.Parameters.AddWithValue("@utdId", utdId);
+                            command.Parameters.AddWithValue("@netId", netId);
+                            command.Parameters.AddWithValue("@firstName", firstName);
+                            command.Parameters.AddWithValue("@lastName", lastName);
+                            command.Parameters.AddWithValue("@password", defaultPassword);
+                            command.Parameters.AddWithValue("@userType", userType);
+                            command.ExecuteNonQuery();
+                        }
+
+                        // Get the user_id of the newly inserted user
+                        long userId;
+                        using (var command = new MySqlCommand("SELECT LAST_INSERT_ID()", connection, transaction))
+                        {
+                            userId = Convert.ToInt64(command.ExecuteScalar());
+                        }
+
+                        // Insert into the students table
+                        string insertStudentQuery = @"
+                    INSERT INTO students (user_id)
+                    VALUES (@userId)";
+                        using (var command = new MySqlCommand(insertStudentQuery, connection, transaction))
+                        {
+                            command.Parameters.AddWithValue("@userId", userId);
+                            command.ExecuteNonQuery();
+                        }
+
+                        transaction.Commit();
+                    }
+                    catch (Exception ex)
+                    {
+                        transaction.Rollback();
+                        throw new Exception("Failed to add student: " + ex.Message);
+                    }
                 }
             }
         }
+
+
+        //------------------------------------------------------------Addition of dates---------------------------------------------------------------------------------------
 
         private async void OnAddDateButtonClicked(object sender, EventArgs e)
         {
@@ -747,61 +888,37 @@ namespace Tracker
                 return;
             }
 
-            // Display a picker to select a student
-            string studentName = await DisplayActionSheet(
-                "Select a Student",
-                "Cancel",
-                null,
-                students.Select(s => s.FullName).ToArray()
-            );
-
-            if (studentName == null || studentName == "Cancel")
-                return;
-
-            // Retrieve the selected student's ID
-            var selectedStudent = students.FirstOrDefault(s => s.FullName == studentName);
-            if (selectedStudent == null)
+            // Ensure ClassName is a valid course ID
+            if (!int.TryParse(ClassName, out int courseId))
             {
-                await DisplayAlert("Error", "Selected student not found.", "OK");
+                await DisplayAlert("Error", "Invalid course ID. Please check the class setup.", "OK");
                 return;
             }
 
-            // Prompt for a date in MM/dd/yyyy format
-            string dateInput = await DisplayPromptAsync(
-                "Add Date",
-                "Enter a date (MM/dd/yyyy):",
-                placeholder: "MM/dd/yyyy",
-                keyboard: Keyboard.Text
-            );
+            // Show the AddDatePage with the courseId
+            var addDatePage = new AddDatePage(students, courseId);
+            await Navigation.PushModalAsync(addDatePage);
 
-            if (!DateTime.TryParse(dateInput, out DateTime selectedDate))
-            {
-                await DisplayAlert("Error", "Invalid date format. Please use MM/dd/yyyy.", "OK");
-                return;
-            }
-
-            // Prompt for time in HH:mm format
-            string timeInput = await DisplayPromptAsync(
-                "Add Time",
-                "Enter time (HH:mm):",
-                placeholder: "HH:mm",
-                keyboard: Keyboard.Text
-            );
-
-            if (!TimeSpan.TryParse(timeInput, out TimeSpan selectedTime))
-            {
-                await DisplayAlert("Error", "Invalid time format. Please use HH:mm.", "OK");
-                return;
-            }
+            // Wait for the result
+            var result = await addDatePage.GetTimeLogUpdateAsync();
+            if (result == null) return; // User canceled
 
             try
             {
+                // Use result to retrieve UTD ID
+                var timeLogUpdate = result;
 
-                // Retrieve the course ID associated with the current class
-                int studentId = GetStudentIdFromUtdId(selectedStudent.UtdId);
+                // Fetch the student ID using the UTD ID
+                int studentId = GetStudentIdFromUtdId(timeLogUpdate.StudentId);
 
-                // Add the new date and time to the database
-                AddDateTimeToDatabase(studentId, Int32.Parse(ClassName), selectedDate.Date, selectedTime);
+                // Add the data to the database
+                AddDateTimeToDatabase(
+                    studentId, // Use the fetched student ID
+                    timeLogUpdate.courseId,
+                    timeLogUpdate.Date,
+                    timeLogUpdate.totalMinutes,
+                    timeLogUpdate.WorkDescription
+                );
 
                 // Refresh the attendance log
                 AttendanceRecords.Clear();
@@ -827,7 +944,7 @@ namespace Tracker
                 connection.Open();
 
                 string query = "SELECT utd_id, CONCAT(first_name, ' ', last_name) AS full_name " +
-                               "FROM users WHERE user_role = 'Student'";
+                               "FROM users WHERE user_role = 'Student'" ;
 
                 using (var command = new MySqlCommand(query, connection))
                 using (var reader = command.ExecuteReader())
@@ -846,6 +963,7 @@ namespace Tracker
             return students;
         }
 
+
         private int GetStudentIdFromUtdId(int utdid)
         {
             using (var connection = new MySqlConnection(DatabaseConfig.ConnectionString))
@@ -854,10 +972,10 @@ namespace Tracker
 
                 // Query to join the students table with the users table to retrieve student_id
                 string query = @"
-            SELECT s.student_id
-            FROM students AS s
-            INNER JOIN users AS u ON s.user_id = u.user_id
-            WHERE u.utd_id = @utdid";
+                                SELECT s.student_id
+                                FROM students AS s
+                                INNER JOIN users AS u ON s.user_id = u.user_id
+                                WHERE u.utd_id = @utdid";
 
                 using (var command = new MySqlCommand(query, connection))
                 {
@@ -883,34 +1001,33 @@ namespace Tracker
 
 
 
-        private void AddDateTimeToDatabase(int studentId, int courseId, DateTime date, TimeSpan time)
+        private void AddDateTimeToDatabase(int studentId, int courseId, DateTime date, int totalMinutes, string workDesc)
         {
             using (var connection = new MySqlConnection(DatabaseConfig.ConnectionString))
             {
                 connection.Open();
 
-                // Calculate the total minutes from the TimeSpan
-                int totalMinutes = (int)time.TotalMinutes;
-
                 string query = @"
-        INSERT INTO time_logs (student_id, course_id, log_date, minutes_logged, work_desc)
-        VALUES (@studentId, @courseId, @logDate, @minutesLogged, @workDesc)
-        ON DUPLICATE KEY UPDATE 
-        minutes_logged = @minutesLogged,
-        work_desc = @workDesc";
+                    INSERT INTO time_logs (student_id, course_id, log_date, minutes_logged, work_desc)
+                    VALUES (@studentId, @courseId, @logDate, @minutesLogged, @workDesc)
+                    ON DUPLICATE KEY UPDATE 
+                        minutes_logged = @minutesLogged,
+                        work_desc = @workDesc";
 
                 using (var command = new MySqlCommand(query, connection))
                 {
                     command.Parameters.AddWithValue("@studentId", studentId);
                     command.Parameters.AddWithValue("@courseId", courseId);
-                    command.Parameters.AddWithValue("@logDate", date.Date); // Pass only the date part
-                    command.Parameters.AddWithValue("@minutesLogged", totalMinutes); // Use the calculated total minutes
-                    command.Parameters.AddWithValue("@workDesc", "Empty work description, professor edit");
+                    command.Parameters.AddWithValue("@logDate", date.Date); // Only the date part
+                    command.Parameters.AddWithValue("@minutesLogged", totalMinutes); // Total minutes logged
+                    command.Parameters.AddWithValue("@workDesc", workDesc); // Provided work description
 
                     command.ExecuteNonQuery();
                 }
             }
         }
+
+
 
 
 
@@ -945,10 +1062,10 @@ namespace Tracker
         public string WorkDescription { get; set; } // Description of the work done
     }
 
-
     public class Student
     {
         public int UtdId { get; set; }
         public string FullName { get; set; }
     }
+
 }
