@@ -5,6 +5,18 @@ using System.Linq;
 using MySql.Data.MySqlClient;
 using Microsoft.Maui.Controls;
 
+// ******************************************************************************
+// * Login Page for Tracker Application
+// *
+// * Written by Jaden Nguyen and Arhum Khan for CS 4485.
+// * NetID: jan200003, axk210013
+// *
+// * This page allows users to log in by verifying their NetID and password.
+// * Successful login retrieves the user's UTD ID and navigates to the ClassListPage,
+// * passing the UTD ID for further actions.
+// *
+// ******************************************************************************
+
 namespace Tracker
 {
     public partial class TimeLog : ContentPage
@@ -51,10 +63,28 @@ namespace Tracker
             {
                 Text = "Add Date",
                 Order = ToolbarItemOrder.Primary,
-                Priority = 1
+                Priority = 2
             };
             addDateToolbarItem.Clicked += OnAddDateButtonClicked;
             ToolbarItems.Add(addDateToolbarItem);
+
+            // Add the Import Students button to the toolbar
+            var importStudentsToolbarItem = new ToolbarItem
+            {
+                Text = "Import Students",
+                Order = ToolbarItemOrder.Primary,
+                Priority = 4
+            };
+            importStudentsToolbarItem.Clicked += OnImportStudentsButtonClicked;
+            ToolbarItems.Add(importStudentsToolbarItem);
+
+        }
+
+        private async void OnEditTeamNumberButtonClicked(object sender, EventArgs e)
+        {
+            // Navigate to a new page to edit team numbers
+            var editTeamNumberPage = new EditTeamNumberPage(ClassName); // Pass course name or ID
+            await Navigation.PushAsync(editTeamNumberPage);
         }
 
 
@@ -382,26 +412,15 @@ namespace Tracker
             cancelToolbarItem.Clicked += OnCancelButtonClicked;
             ToolbarItems.Add(cancelToolbarItem);
 
-            // Add Add Student button
-            var addStudentToolbarItem = new ToolbarItem
+            // Add the "Edit Team Number" button to the toolbar
+            var editTeamNumberToolbarItem = new ToolbarItem
             {
-                Text = "Add Student",
+                Text = "Edit Team Number",
                 Order = ToolbarItemOrder.Primary,
                 Priority = 2
             };
-            addStudentToolbarItem.Clicked += OnAddStudentButtonClicked;
-            ToolbarItems.Add(addStudentToolbarItem);
-
-            // Add Add Date button
-            var addDateToolbarItem = new ToolbarItem
-            {
-                Text = "Add Date",
-                Order = ToolbarItemOrder.Primary,
-                Priority = 3
-            };
-            addDateToolbarItem.Clicked += OnAddDateButtonClicked;
-            ToolbarItems.Add(addDateToolbarItem);
-
+            editTeamNumberToolbarItem.Clicked += OnEditTeamNumberButtonClicked;
+            ToolbarItems.Add(editTeamNumberToolbarItem);
 
 
             // Refresh the grid layout
@@ -786,27 +805,21 @@ namespace Tracker
         //------------------------------------------------------------Addition of Student---------------------------------------------------------------------------------------
         private async void OnAddStudentButtonClicked(object sender, EventArgs e)
         {
-            // Show a custom entry form for student details
             var addStudentPage = new AddStudentPage();
             await Navigation.PushModalAsync(addStudentPage);
 
-            // Wait for the result
             var result = await addStudentPage.GetStudentDetailsAsync();
-            if (result == null) return; // User canceled
+            if (result == null) return;
 
             try
             {
+                var (studentName, netId, utdId, teamNumber) = result.Value;
+                string defaultPassword = netId;
+                string defaultUserType = "Student";
 
-                // Destructure the result
-                var (studentName, netId, utdId) = result.Value;
+                // Pass the team number (including 0 for no team) to the database function
+                AddStudentToDatabase(utdId, netId, studentName, defaultPassword, defaultUserType, teamNumber ?? 0);
 
-                string defaultPassword = netId; // Default password
-                string defaultUserType = "Student"; // Default user type
-
-                // Save the student to the database
-                AddStudentToDatabase(utdId, netId, studentName, defaultPassword, defaultUserType);
-
-                // Refresh the attendance log
                 AttendanceRecords.Clear();
                 LoadAttendanceLog();
             }
@@ -816,8 +829,120 @@ namespace Tracker
             }
         }
 
+        private async void OnImportStudentsButtonClicked(object sender, EventArgs e)
+        {
+            try
+            {
+                var result = await FilePicker.Default.PickAsync(new PickOptions
+                {
+                    PickerTitle = "Select a Student File",
+                    FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+            {
+                { DevicePlatform.WinUI, new[] { ".txt" } } // Allow only `.txt` files
+            })
+                });
 
-        private void AddStudentToDatabase(int utdId, string netId, string fullName, string defaultPassword, string userType)
+                if (result != null)
+                {
+                    // Read the file content
+                    using (var stream = await result.OpenReadAsync())
+                    using (var reader = new StreamReader(stream))
+                    {
+                        string fileContent = await reader.ReadToEndAsync();
+                        ProcessStudentFile(fileContent);
+                    }
+                }
+                else
+                {
+                    await DisplayAlert("Cancelled", "No file was selected.", "OK");
+                }
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert("Error", $"An error occurred while importing the file: {ex.Message}", "OK");
+            }
+        }
+
+        private void ProcessStudentFile(string fileContent)
+        {
+            try
+            {
+                var lines = fileContent.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+                foreach (var line in lines.Skip(1)) // Skip header row
+                {
+                    var columns = line.Split('\t', StringSplitOptions.TrimEntries);
+
+                    if (columns.Length >= 4)
+                    {
+                        string lastName = columns[0];
+                        string firstName = columns[1];
+                        string netId = columns[2];
+                        string utdId = columns[3];
+
+                        try
+                        {
+                            AddStudentToDatabase(
+                                utdId: int.Parse(utdId),
+                                netId: netId,
+                                fullName: $"{firstName} {lastName}",
+                                defaultPassword: netId, // Default password as NetID
+                                userType: "Student",
+                                teamNumber: 0 // Default team number
+                            );
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Failed to add student {firstName} {lastName}: {ex.Message}");
+                        }
+                    }
+                }
+
+                DisplayAlert("Success", "Students imported successfully!", "OK");
+                AttendanceRecords.Clear();
+                LoadAttendanceLog();
+            }
+            catch (Exception ex)
+            {
+                DisplayAlert("Error", $"Failed to process the file: {ex.Message}", "OK");
+            }
+        }
+
+
+
+
+
+        private void ImportStudentsFromFile(string fileContent)
+        {
+            var lines = fileContent.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+            // Skip the header row
+            for (int i = 1; i < lines.Length; i++)
+            {
+                var columns = lines[i].Split('\t');
+                if (columns.Length < 4) continue; // Skip invalid rows
+
+                string lastName = columns[0].Trim();
+                string firstName = columns[1].Trim();
+                string netId = columns[2].Trim();
+                if (!int.TryParse(columns[3].Trim(), out int utdId)) continue;
+
+                string fullName = $"{firstName} {lastName}";
+                string defaultPassword = netId;
+                string defaultUserType = "Student";
+
+                // Insert student with team number set to 0
+                AddStudentToDatabase(utdId, netId, fullName, defaultPassword, defaultUserType, 0);
+            }
+
+            // Refresh attendance log
+            AttendanceRecords.Clear();
+            LoadAttendanceLog();
+        }
+
+
+
+        private void AddStudentToDatabase(int utdId, string netId, string fullName, string defaultPassword, string userType, int teamNumber)
         {
             using (var connection = new MySqlConnection(DatabaseConfig.ConnectionString))
             {
@@ -833,8 +958,8 @@ namespace Tracker
 
                         // Insert into the users table
                         string insertUserQuery = @"
-                    INSERT INTO users (utd_id, net_id, first_name, last_name, password, user_role)
-                    VALUES (@utdId, @netId, @firstName, @lastName, @password, @userType)";
+                            INSERT INTO users (utd_id, net_id, first_name, last_name, password, user_role)
+                            VALUES (@utdId, @netId, @firstName, @lastName, @password, @userType)";
                         using (var command = new MySqlCommand(insertUserQuery, connection, transaction))
                         {
                             command.Parameters.AddWithValue("@utdId", utdId);
@@ -854,13 +979,26 @@ namespace Tracker
                         }
 
                         // Insert into the students table
-                        string insertStudentQuery = @"
-                    INSERT INTO students (user_id)
-                    VALUES (@userId)";
+                        string insertStudentQuery = "INSERT INTO students (user_id) VALUES (@userId)";
                         using (var command = new MySqlCommand(insertStudentQuery, connection, transaction))
                         {
                             command.Parameters.AddWithValue("@userId", userId);
                             command.ExecuteNonQuery();
+                        }
+
+                        // Insert into the team_members table if a team number is provided
+                        if (teamNumber >= 0)
+                        {
+                            string insertTeamMemberQuery = @"
+                                INSERT INTO team_members (student_id, course_id, team_number)
+                                VALUES ((SELECT student_id FROM students WHERE user_id = @userId), @courseId, @teamNumber)";
+                            using (var command = new MySqlCommand(insertTeamMemberQuery, connection, transaction))
+                            {
+                                command.Parameters.AddWithValue("@userId", userId);
+                                command.Parameters.AddWithValue("@courseId", int.Parse(ClassName));
+                                command.Parameters.AddWithValue("@teamNumber", teamNumber);
+                                command.ExecuteNonQuery();
+                            }
                         }
 
                         transaction.Commit();
@@ -873,6 +1011,8 @@ namespace Tracker
                 }
             }
         }
+
+
 
 
         //------------------------------------------------------------Addition of dates---------------------------------------------------------------------------------------

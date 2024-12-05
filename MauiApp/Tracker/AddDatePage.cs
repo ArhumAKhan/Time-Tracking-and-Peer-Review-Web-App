@@ -3,8 +3,8 @@ using Tracker;
        // ******************************************************************************
         // * Add date page for Tracker Application
         // *
-        // * Written by Jaden Nguyen for CS 4485.
-        // * NetID: jan200003
+        // * Written by Jaden Nguyen and Arhum Khan for CS 4485.
+        // * NetID: jan200003, axk210013
         // *
         // * This page puts all the entries for adding a date for a specific student onto one display
         // * Errors display if incorrect (invalid) information is put in or nothing is put in and tried to be submitted.
