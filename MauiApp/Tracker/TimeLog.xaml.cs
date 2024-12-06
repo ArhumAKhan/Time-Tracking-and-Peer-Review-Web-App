@@ -8,19 +8,26 @@ using Microsoft.Maui.Controls;
 // ******************************************************************************
 // * Login Page for Tracker Application
 // *
-// * Written by Jaden Nguyen and Arhum Khan for CS 4485.
+// * Written completely in collaberation by Jaden Nguyen and Arhum Khan for CS 4485.
 // * NetID: jan200003, axk210013
 // *
-// * This page allows users to log in by verifying their NetID and password.
-// * Successful login retrieves the user's UTD ID and navigates to the ClassListPage,
-// * passing the UTD ID for further actions.
+// * This page allows professors to view, edit, and manage attendance logs for a specific class.
+// * Features include adding students, dates, and attendance logs, importing student lists,
+// * and updating or deleting existing logs. The data is synced with the database to ensure
+// * consistency and accuracy across sessions.
 // *
+// * Core functionality includes:
+// * - Displaying a grid of student attendance data with cumulative and daily hours.
+// * - Allowing professors to add or update attendance logs for specific dates.
+// * - Editing team numbers and managing student records.
+// * - Importing student data from files and maintaining a synchronized database.
 // ******************************************************************************
 
 namespace Tracker
 {
     public partial class TimeLog : ContentPage
     {
+        // Properties to hold class name, attendance records, and state for editing
         public string ClassName { get; private set; }
         private List<DateTime> DateHeaders { get; set; }
         private List<StudentAttendanceRecord> AttendanceRecords { get; set; }
@@ -31,6 +38,7 @@ namespace Tracker
 
         public TimeLog(string className)
         {
+            // Initialize class properties and UI components
             ClassName = className;
             InitializeComponent();
             DateHeaders = new List<DateTime>();
@@ -92,6 +100,7 @@ namespace Tracker
         {
             AttendanceRecords.Clear(); // Clear existing records to avoid duplication
             DateHeaders.Clear(); // Clear existing headers to avoid duplication
+            entryDictionary.Clear(); // Clear the entry dictionary to avoid stale references
 
             using (var connection = new MySqlConnection(DatabaseConfig.ConnectionString))
             {
@@ -119,6 +128,7 @@ namespace Tracker
 
                             while (reader.Read())
                             {
+                                // Process each log entry and group them by student
                                 int studentId = reader.GetInt32("student_id");
                                 DateTime logDate = reader.GetDateTime("log_date");
                                 int minutesLogged = reader.GetInt32("minutes_logged");
@@ -185,7 +195,7 @@ namespace Tracker
                                     StudentName = studentName,
                                     CumulativeHours = formattedCumulativeHours,
                                     DailyHours = dailyHoursList,
-                                    courseId = courseId 
+                                    courseId = courseId
                                 });
                             }
                         }
@@ -204,52 +214,48 @@ namespace Tracker
 
 
         private void DeleteZeroMinuteEntry(int studentId, DateTime logDate)
-{
-    using (var connection = new MySqlConnection(DatabaseConfig.ConnectionString))
-    {
-        connection.Open();
+        {
+            using (var connection = new MySqlConnection(DatabaseConfig.ConnectionString))
+            {
+                connection.Open();
 
-        string deleteQuery = @"
+                string deleteQuery = @"
             DELETE FROM time_logs 
             WHERE student_id = @studentId 
             AND log_date = @logDate 
             AND minutes_logged = 0";
 
-        using (MySqlCommand deleteCommand = new MySqlCommand(deleteQuery, connection))
-        {
-            deleteCommand.Parameters.AddWithValue("@studentId", studentId);
-            deleteCommand.Parameters.AddWithValue("@logDate", logDate);
+                using (MySqlCommand deleteCommand = new MySqlCommand(deleteQuery, connection))
+                {
+                    deleteCommand.Parameters.AddWithValue("@studentId", studentId);
+                    deleteCommand.Parameters.AddWithValue("@logDate", logDate);
 
-            deleteCommand.ExecuteNonQuery();
+                    deleteCommand.ExecuteNonQuery();
+                }
+            }
+
+            // Remove the corresponding log from AttendanceRecords and update DateHeaders
+            var recordToRemove = AttendanceRecords.FirstOrDefault(r => r.StudentId == studentId);
+            if (recordToRemove != null)
+            {
+                // Find and remove the log date from DailyHours
+                int dateIndex = DateHeaders.IndexOf(logDate);
+                if (dateIndex >= 0)
+                {
+                    recordToRemove.DailyHours[dateIndex] = "00:00"; // Set to "00:00" to indicate no hours
+
+                    // Remove date from DateHeaders if no students have hours logged
+                    bool isDateEmpty = AttendanceRecords.All(r => r.DailyHours[dateIndex] == "00:00");
+                    if (isDateEmpty)
+                        DateHeaders.RemoveAt(dateIndex);
+                }
+
+                // Remove the record if all hours are zero
+                bool allZero = recordToRemove.DailyHours.All(h => h == "00:00");
+                if (allZero)
+                    AttendanceRecords.Remove(recordToRemove);
+            }
         }
-    }
-
-    // Remove the corresponding log from AttendanceRecords and update DateHeaders
-    var recordToRemove = AttendanceRecords.FirstOrDefault(r => r.StudentId == studentId);
-    if (recordToRemove != null)
-    {
-        // Find and remove the log date from DailyHours
-        int dateIndex = DateHeaders.IndexOf(logDate);
-        if (dateIndex >= 0)
-        {
-            recordToRemove.DailyHours[dateIndex] = "00:00"; // Set to "00:00" to indicate no hours
-
-            // Remove date from DateHeaders if no students have hours logged
-            bool isDateEmpty = AttendanceRecords.All(r => r.DailyHours[dateIndex] == "00:00");
-            if (isDateEmpty)
-                DateHeaders.RemoveAt(dateIndex);
-        }
-
-        // Remove the record if all hours are zero
-        bool allZero = recordToRemove.DailyHours.All(h => h == "00:00");
-        if (allZero)
-            AttendanceRecords.Remove(recordToRemove);
-    }
-}
-
-
-
-
 
         private void GenerateGridLayout()
         {
@@ -257,6 +263,7 @@ namespace Tracker
             AttendanceGrid.Children.Clear();
             AttendanceGrid.ColumnDefinitions.Clear();
             AttendanceGrid.RowDefinitions.Clear();
+            entryDictionary.Clear();
 
             // Add column definitions for student name, cumulative hours, each date, and delete button (conditionally)
             AttendanceGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star }); // Student name
@@ -679,11 +686,6 @@ namespace Tracker
             }
         }
 
-
-
-
-
-
         //------------------------------------------------------------Deletion part---------------------------------------------------------------------------------------
         private async void OnDeleteButtonClicked(object sender, EventArgs e)
         {
@@ -1000,7 +1002,6 @@ namespace Tracker
                                 command.ExecuteNonQuery();
                             }
                         }
-
                         transaction.Commit();
                     }
                     catch (Exception ex)
@@ -1084,7 +1085,7 @@ namespace Tracker
                 connection.Open();
 
                 string query = "SELECT utd_id, CONCAT(first_name, ' ', last_name) AS full_name " +
-                               "FROM users WHERE user_role = 'Student'" ;
+                               "FROM users WHERE user_role = 'Student'";
 
                 using (var command = new MySqlCommand(query, connection))
                 using (var reader = command.ExecuteReader())
@@ -1166,15 +1167,7 @@ namespace Tracker
                 }
             }
         }
-
-
-
-
-
-
     }
-
-
 
     public class DailyLog
     {
@@ -1207,5 +1200,4 @@ namespace Tracker
         public int UtdId { get; set; }
         public string FullName { get; set; }
     }
-
 }

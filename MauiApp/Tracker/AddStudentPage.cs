@@ -2,7 +2,7 @@
 // ******************************************************************************
 // * Add date page for Tracker Application
 // *
-// * Written by Jaden Nguyen and Arhum Khan for CS 4485.
+// * Written completely in collaberation by Jaden Nguyen and Arhum Khan for CS 4485.
 // * NetID: jan200003, axk210013
 // *
 // * This page puts all the entries for adding a student with the users entries

@@ -1,6 +1,17 @@
 using MySql.Data.MySqlClient;
 using Mysqlx.Crud;
 
+// ******************************************************************************
+// * Edit Team Number for Tracker Application
+// *
+// * Written completely in collaberation by Jaden Nguyen and Arhum Khan for CS 4485.
+// * NetID: jan200003, axk210013
+// *
+// * This page allows professors to edit team numbers for students in their class.
+// * The interface retrieves the current team numbers from the database, 
+// * displays them in an editable UI, and allows professors to save the updated team numbers.
+// * Team numbers are saved back to the database, ensuring data consistency.
+// ******************************************************************************
 
 namespace Tracker
 {
