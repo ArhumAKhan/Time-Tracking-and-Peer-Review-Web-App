@@ -1,4 +1,5 @@
 using MySql.Data.MySqlClient;
+using Mysqlx.Crud;
 
 
 namespace Tracker
@@ -47,7 +48,8 @@ namespace Tracker
                 FROM team_members tm
                 JOIN students s ON tm.student_id = s.student_id
                 JOIN users u ON s.user_id = u.user_id
-                WHERE tm.course_id = @courseId";
+                WHERE tm.course_id = @courseId
+                ORDER BY tm.team_number ASC, u.last_name ASC, u.first_name ASC";
 
                 using (var command = new MySqlCommand(query, connection))
                 {
